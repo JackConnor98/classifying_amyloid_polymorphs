@@ -3,7 +3,7 @@
 ### Author: Jack P Connor
 ### Contact: bsjpc@leeds.ac.uk
 
-### Last Updated 28-03-2025
+### Last Updated 07-07-2025
 
 ## ABSTRACT
 
@@ -31,8 +31,5 @@ Ensure FoldX is installed on your system and added to your path. Follow the inst
 
 The analysis pipeline is run in a Linux terminal using the script run_analysis.sh. In this script, you can change the run parameters to select which scripts you would like to run.
 
-## Getting a list of PDB codes
-
-A web scraping script written in Python that extracts all the entries for a specific protein of interest from the [Amyloid Atlas](https://people.mbi.ucla.edu/sawaya/amyloidatlas/).
 
 
