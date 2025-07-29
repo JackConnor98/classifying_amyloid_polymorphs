@@ -17,7 +17,7 @@ if not os.path.exists(save_path):
 #############################################################################################################################
 
 # importing EMD_data
-file_path = "Output/emdb_data.txt"
+file_path = os.path.join("Output", "emdb_data.txt")
 
 # Read the text file into a DataFrame
 df = pd.read_csv(file_path, sep="\t") 
@@ -131,8 +131,8 @@ for index, row in df.iterrows():
 combined_exterior_chains = combined_exterior_chains.drop(columns=['com_z'])
 
 # Save the combined results
-combined_chain_fibril.to_csv('Output/PDBs/fibrils_extended/chain_fibril.csv', index=False)
-combined_exterior_chains.to_csv(f'Output/PDBs/fibrils_extended/exterior_chains.csv', index=False)
+combined_chain_fibril.to_csv(os.path.join("Output", "PDBs", "fibrils_extended", "chain_fibril.csv"), index=False)
+combined_exterior_chains.to_csv(os.path.join("Output", "PDBs", "fibrils_extended", "exterior_chains.csv"), index=False)
         
 # Close PyMol
 cmd.quit()

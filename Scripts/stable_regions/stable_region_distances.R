@@ -14,18 +14,21 @@ invisible(lapply(required_packages, require, character.only = TRUE))
 # Cleaning Environment
 rm(list = ls())
 
-
 ################################################################################
 
 # Creating Directories
-save_dir <- "Output/stable_regions/network_plots"
+save_dir <- file.path("Output", "stable_regions")
+region_dir <- file.path(save_dir, "region_contacts")
+residue_dir <- file.path(save_dir, "residue_contacts")
+
 if(!dir.exists(save_dir)) dir.create(save_dir)
+if(!dir.exists(region_dir)) dir.create(region_dir)
+if(!dir.exists(residue_dir)) dir.create(residue_dir)
 
 ################################################################################
 
-
 # Locate all pdbs in folder that need to be looped through
-folder_path <- "Output/PDBs/asymetric_unit"
+folder_path <- file.path("Output", "PDBs", "asymetric_unit")
 
 # Get a list of all .pdb files in the folder
 pdb_files <- list.files(path = folder_path, pattern = "\\.pdb$", full.names = TRUE)
@@ -40,7 +43,7 @@ pdb_filenames <- sub("\\.pdb$", "", pdb_filenames)
 pdb_names <- sub("_.*", "", pdb_filenames)
 
 # Getting the list of high resolution PDBs
-high_resolution_PDBs <- read_delim("Output/Validation/high_resolution_pdb_ids.txt", 
+high_resolution_PDBs <- read_delim(file.path("Output", "Validation", "high_resolution_pdb_ids.txt"), 
                                    delim = "\t", escape_double = FALSE, 
                                    trim_ws = TRUE)
 # Creating PDB column
@@ -54,28 +57,19 @@ indices_to_remove <- which(pdb_names %in% low_res)
 # Removing the corresponding elements from pdb_files
 pdb_files_filtered <- pdb_files[-indices_to_remove]
 
-
-
-#pdb_files_filtered <- pdb_files_filtered[!grepl("7qkz", pdb_files_filtered)]
-
 ################################################################################
 
+# Loading Fibril info
+fibril_tmp <- read.csv(file.path("Output", "PDBs", "COM_and_fibril.csv"))
+fibril_info <- fibril_tmp %>% select(-c("chain", "x_com", "y_com", "z_com", "Rg")) %>% distinct()
 
 # Loading RMSD Cluster Data
-cluster_groups <- read.csv("Output/RMSD/RMSD_cluster_groups.csv")
+cluster_groups <- read.csv(file.path("Output", "RMSD", "data", "RMSD_cluster_groups.csv"))
 
-# Removing _chainID to create PDB column 
-cluster_groups <- cluster_groups %>%
-  mutate(pdb = sapply(str_split(pdb_id, "_"), function(x) x[1]))
-
-# Creating a fibril column
-cluster_groups <- cluster_groups %>%
-                    rowwise() %>%
-                      mutate(fibril = str_split_1(pdb_id, "_")[2]) %>%
-                        ungroup()
+fibril_df <- merge(fibril_info, cluster_groups, by = "pdb_id")
 
 # Importing stable region data
-stable_regions <- read_csv("Output/stable_regions/stable_regions.csv")
+stable_regions <- read.csv(file.path("Output", "stable_regions", "stable_regions.csv"))
 
 # Separating residues into start and end
 stable_regions <- stable_regions %>%
@@ -88,6 +82,62 @@ stable_regions <- stable_regions %>%
 # Initialising dataframe
 combined_residue_distance <- data.frame()
 combined_region_distance <- data.frame()
+
+# Defining functions
+stable_region_distance <- function(CA_filtered) {
+  
+  #######################################################
+  ##### Calculating Distance Between Stable Regions #####
+  #######################################################
+  
+  CA_filtered$region1 <- NA
+  CA_filtered$region2 <- NA
+  
+  # Finding CA-CA distance comparisons that occur within stable regions
+  for (j in  1:nrow(stable_regions)) {
+    
+    for (k in 1:nrow(CA_filtered)) {
+      
+      if (CA_filtered$resno1[k] >= stable_regions$start[j] & 
+          CA_filtered$resno1[k] <= stable_regions$end[j]) {
+        
+        CA_filtered$region1[k] <- stable_regions$region[j] 
+        
+      }
+      
+      if (CA_filtered$resno2[k] >= stable_regions$start[j] & 
+          CA_filtered$resno2[k] <= stable_regions$end[j]) {
+        
+        CA_filtered$region2[k] <- stable_regions$region[j] 
+        
+      }
+    }
+  }
+  
+  # Removing Non-stable region comparisons
+  stable_region_CA_dist <- na.omit(CA_filtered)
+  
+  # Removing comparisons between same region on same protofibril
+  stable_region_CA_dist <- stable_region_CA_dist %>%
+    filter(!(region1 == region2 & which_fibril == "same"))
+  
+  
+  # Find the minimum distance for each pair of regions for each fibril
+  min_distances <- stable_region_CA_dist %>%
+    #group_by(region1, region2) %>%
+    group_by(region1, region2, which_fibril, pdb_id) %>%
+    summarize(min_distance = min(distance), .groups = 'drop')
+  
+  
+  # Making group columns as characters
+  min_distances$region1 <- as.character(min_distances$region1)
+  min_distances$region2 <- as.character(min_distances$region2)
+  
+  # Adding PDB name
+  min_distances$pdb <- selected_pdb
+  
+  return(min_distances)
+}
 
 
 for (file in pdb_files_filtered) {
@@ -110,7 +160,7 @@ for (file in pdb_files_filtered) {
   names(df)[names(df) == "b"] <- "fibril"
   
   # adding in the current pdb
-  df$pdb <- selected_pdb
+  df$PDB <- selected_pdb
 
   #################################################
   ##### Calculating Distance Between C-alphas #####
@@ -120,10 +170,13 @@ for (file in pdb_files_filtered) {
   df <- df %>% filter(df$elety == "CA")
   
   # Selecting only the relevant columns 
-  df <- df %>% select(c("pdb", "fibril", "resno", "x", "y", "z"))
+  df <- df %>% select(c("PDB", "fibril", "resno", "x", "y", "z"))
   
   # Adding in pdb_id to handle fibrils with multiple polymorphs
-  polymorph_data <- cluster_groups %>% filter(pdb == selected_pdb)
+  df <- merge(df, fibril_df, by = c("PDB", "fibril"))
+  
+  # Counting the number of polymorphs
+  polymorph_count <- as.numeric(max(df$polymorph))
   
   
   # Calculate the pairwise distances between CA's using the dist function
@@ -133,14 +186,11 @@ for (file in pdb_files_filtered) {
   CA_distance_df <- data.frame(
     resno1 = rep(df$resno, each = nrow(df)),
     fibril1 = rep(df$fibril, each = nrow(df)),
+    polymorph1 = rep(df$polymorph, each = nrow(df)),
     resno2 = rep(df$resno, times = nrow(df)),
     fibril2 = rep(df$fibril, times = nrow(df)),
+    polymorph2 = rep(df$polymorph, times = nrow(df)),
     distance = as.vector(CA_distances))
-  
-  # Remove duplicates comparisons but not self comparisons
-  CA_distance_df <- CA_distance_df %>%
-    filter(resno1 <= resno2)
-  
   
   # Removing comparisons between same region on same protofibril
   CA_distance_df <- CA_distance_df %>%
@@ -156,7 +206,7 @@ for (file in pdb_files_filtered) {
   
   
   ### If only one unique value in pdb_id (i.e. only one polymorph) ###
-  if (nrow(polymorph_data) == 1) {
+  if (polymorph_count == 1) {
     
     # Find the minimum distance for each pair of residues for each fibril (to remove duplicate intra-residue comparisons)
     min_distances <- CA_distance_df %>%
@@ -169,117 +219,84 @@ for (file in pdb_files_filtered) {
       filter(distance == min_distance) %>%
       select(-c("min_distance", "fibril1", "fibril2"))
     
-    
-    if (nrow(CA_filtered > 0)) {
+    if(nrow(CA_filtered > 0)) {
       # Adding pdb_id
-      CA_filtered$pdb_id <- polymorph_data$pdb_id
+      current_pdb_info <- fibril_df %>% filter(PDB == selected_pdb)
+      CA_filtered$pdb_id <- current_pdb_info$pdb_id[1]
+      
     }
     
     # Merging with combined dataframe to store all pdb distances
     combined_residue_distance <- rbind(combined_residue_distance, CA_filtered)
+    
+    # Calculating stable region distances
+    min_region_distances <- stable_region_distance(CA_filtered)
+    
+    # Merging current min_unique_data with combined_region_distance
+    combined_region_distance <- rbind(combined_region_distance, min_region_distances)
     
   
   } else {
     
     # If there is more than one pdb_id (i.e. more than one polymorph)
     
-    for (i in 1:nrow(polymorph_data)) {
-      
+    # Finding the length of remaining unique polymorphs as some may be removed by Q-score filtering
+    remaining_polymorphs <- unique(CA_distance_df$polymorph1)
+    
+    #for (i in 1:polymorph_count) {
+    for (i in remaining_polymorphs) {
+        
       # Filter rows where fibril1 or fibril2 contains the polymorph
       CA_distance_polymorph <- CA_distance_df %>%
-                                filter(fibril1 == polymorph_data$fibril[i] | fibril2 == polymorph_data$fibril[i])
+                                filter(polymorph1 == i)
       
       # Find the minimum distance for each pair of residues for each fibril (to remove duplicate intra-residue comparisons)
-      min_distances <- CA_distance_df %>%
+      min_distances <- CA_distance_polymorph %>%
         group_by(resno1, resno2) %>%
         summarize(min_distance = min(distance), .groups = 'drop')
       
       # Join the summarized result back to the original dataframe to retain all columns
-      CA_filtered <- CA_distance_df %>%
+      CA_filtered <- CA_distance_polymorph %>%
         inner_join(min_distances, by = c("resno1", "resno2")) %>%
         filter(distance == min_distance) %>%
         select(-c("min_distance", "fibril1", "fibril2"))
       
-      if(nrow(CA_filtered > 0)) {
-        # Adding pdb_id
-        CA_filtered$pdb_id <- polymorph_data$pdb_id[i]
+        if(nrow(CA_filtered > 0)) {
+          # Getting the polymorph information for the current fibril
+          current_pdb_info <- fibril_df %>% filter(PDB == selected_pdb)
+          
+          # Handling asym unit containing multiple copies of the same polymorph
+          current_pdb_info <- current_pdb_info %>%
+                                distinct(pdb_id, polymorph, .keep_all = TRUE)
+          
+          # Dropping fibril column as it may be incorrect for asym_units with multiple copies of the same polymorph
+          current_pdb_info <- current_pdb_info %>% select(-c("fibril"))
+          
+          # Adding pdb_id
+          CA_filtered$pdb_id <- current_pdb_info$pdb_id[current_pdb_info$polymorph == i]
+          
+          }
+      
+        # Merging with combined dataframe to store all pdb distances
+        combined_residue_distance <- rbind(combined_residue_distance, CA_filtered)
+        
+        # Calculating stable region distances
+        min_region_distances <- stable_region_distance(CA_filtered)
+        
+        # Merging current min_unique_data with combined_region_distance
+        combined_region_distance <- rbind(combined_region_distance, min_region_distances)
+      
       }
-      
-      # Merging with combined dataframe to store all pdb distances
-      combined_residue_distance <- rbind(combined_residue_distance, CA_filtered)
-      
-      
-    }
-    
-    
   }
-  
-  
-  #######################################################
-  ##### Calculating Distance Between Stable Regions #####
-  #######################################################
-  
-  CA_filtered$region1 <- NA
-  CA_filtered$region2 <- NA
-  
-  # Finding CA-CA distance comparisons that occur within stable regions
-  for (j in  1:nrow(stable_regions)) {
-    
-    for (k in 1:nrow(CA_filtered)) {
-      
-      if (CA_filtered$resno1[k] >= stable_regions$start[j] & 
-          CA_filtered$resno1[k] <= stable_regions$end[j]) {
-       
-          CA_filtered$region1[k] <- stable_regions$region[j] 
-        
-      }
-      
-      if (CA_filtered$resno2[k] >= stable_regions$start[j] & 
-          CA_filtered$resno2[k] <= stable_regions$end[j]) {
-        
-          CA_filtered$region2[k] <- stable_regions$region[j] 
-        
-      }
-    }
-  }
-  
-  # Removing Non-stable region comparisons
-  stable_region_CA_dist <- na.omit(CA_filtered)
-  
-  # Remove duplicates comparisons but not self comparisons
-  stable_region_CA_dist <- stable_region_CA_dist %>%
-    filter(region1 <= region2)
-
-  # Removing comparisons between same region on same protofibril
-  stable_region_CA_dist <- stable_region_CA_dist %>%
-    filter(!(region1 == region2 & which_fibril == "same"))
-
-
-  # Find the minimum distance for each pair of regions for each fibril
-  min_distances <- stable_region_CA_dist %>%
-    #group_by(region1, region2) %>%
-    group_by(region1, region2, which_fibril) %>%
-    summarize(min_distance = min(distance), .groups = 'drop')
-  
-  
-  # Making group columns as characters
-  min_distances$region1 <- as.character(min_distances$region1)
-  min_distances$region2 <- as.character(min_distances$region2)
-
-  # Adding PDB name
-  min_distances$pdb <- selected_pdb
-
-  # Merging current min_unique_data with combined_region_distance
-  combined_region_distance <- rbind(combined_region_distance, min_distances)
   
 }
 
 # Saving combined_residue_distances
-write_csv(combined_residue_distance, "Output//stable_regions/residue_distances.csv")
+write_csv(combined_residue_distance, file.path(residue_dir, "residue_distances.csv"))
 
 
 # Saving combined_region_distances
-write_csv(combined_region_distance, "Output/stable_regions/region_distances.csv")
+write_csv(combined_region_distance, file.path(region_dir, "region_distances.csv"))
 
 
 #################################################################################################
@@ -292,35 +309,41 @@ write_csv(combined_region_distance, "Output/stable_regions/region_distances.csv"
 #################################################################################################
 #################################################################################################
 
-# Loading in stable region distance data if required
-combined_region_distance <- read_csv("Output/stable_regions/region_distances.csv")
-
 # Creating a single comparison column
 combined_region_distance <- combined_region_distance %>%
   mutate(comparison = paste(region1, "-", region2))
 
-# Loading RMSD Cluster Data
-cluster_groups <- read.csv("Output/RMSD/RMSD_cluster_groups.csv")
-
-# Removing _chainID to just use PDB codes 
-cluster_groups <- cluster_groups %>%
-  mutate(pdb = sapply(str_split(pdb_id, "_"), function(x) x[1]))
-
-# Selecting columns of interest
-cluster_groups <- cluster_groups %>%
-  select(pdb, group)
-
-# Setting group to character
-cluster_groups$group <- as.character(cluster_groups$group)
-
-# Remove all instances of duplicated rows based on "pdb" column
-cluster_groups <- cluster_groups %>%
-  group_by(pdb) %>%
-  filter(n() == 1) %>%
-  ungroup()
-
 # Merging stable region distances and cluster group dataframes
-stable_dist_by_cluster <- merge(combined_region_distance, cluster_groups, by = "pdb")
+stable_dist_by_cluster <- merge(combined_region_distance, cluster_groups, by = "pdb_id")
+
+# Saving data
+write.csv(stable_dist_by_cluster, file = file.path(region_dir, "region_distances_by_cluster_group.csv"), 
+          row.names = FALSE, quote = TRUE)
+
+
+# Calculating the percentage of structures per group with each contact
+
+# Keeping contacts < 10.8A
+contact_df <- stable_dist_by_cluster %>% filter(min_distance < 10.8)
+
+# Counting the number of each contact per group
+contact_counts <- contact_df %>%
+  count(group, comparison) %>%
+  arrange(group)
+
+# Counting the number of unique PDBs in each group
+pdbs_per_group <- stable_dist_by_cluster %>%
+  group_by(group) %>%
+  summarise(unique_pdb_count = n_distinct(pdb_id))
+
+percent_df <- merge(contact_counts, pdbs_per_group, by = "group")
+
+percent_df$freq <- (percent_df$n / percent_df$unique_pdb_count) * 100
+
+percent_df$comparison <- gsub("-", "--", percent_df$comparison)
+
+write.csv(percent_df, file = file.path(region_dir, "region_contacts_percentage_per_group.csv"), 
+          row.names = FALSE)
 
 
 #####################
@@ -372,7 +395,7 @@ network_data <- stable_dist_by_cluster %>% filter(min_distance <= distance_thres
 groups <- unique(cluster_groups$group)
 
 for (current_group in groups) {
-  
+
   # Filtering stable_dist_by_cluster to select only one cluster group at a time
   network_data <- stable_dist_by_cluster %>% 
                     filter(min_distance <= distance_threshold & group == current_group)
@@ -448,8 +471,30 @@ for (current_group in groups) {
     # Assign colors to the vertices
     V(graph)$color <- node_colors[V(graph)$name]
     
+    #########################################################
+    #########################################################
+    #########################################################
+    
+    # Adding transparency to the nodes
+    # Function to convert named colors to RGBA
+    add_alpha <- function(col, alpha = 0.5) {
+      # Convert color names to RGB and then apply alpha
+      rgb_vals <- col2rgb(col) / 255
+      apply(rgb_vals, 2, function(x) rgb(x[1], x[2], x[3], alpha = alpha))
+    }
+    
+    # Apply transparency to your node colors
+    V(graph)$color <- add_alpha(node_colors[V(graph)$name], alpha = 0.25)
+    
+    # Changing the border colour
+    V(graph)$frame.color <- node_colors[V(graph)$name]
+    
+    #########################################################
+    #########################################################
+    #########################################################
+    
     # Set border width for each node
-    vertex_border_width <- 3  # Adjust this value to control the border width
+    vertex_border_width <- 10  # Adjust this value to control the border width
     
     
     # Define a function to draw a circle
@@ -461,7 +506,7 @@ for (current_group in groups) {
     }
     
     # Calculate the center and radius for the circle
-    layout <- layout.circle(graph)
+    layout <- layout_in_circle(graph)
     center <- colMeans(layout)
     radius <- max(sqrt(rowSums((layout - center)^2)))
     
@@ -470,10 +515,6 @@ for (current_group in groups) {
     
     # Calculate the plot limits to ensure nodes are not clipped
     node_radius <- 30  # Same as vertex.size
-    
-    if("5o3l" %in% pdb_names){
-      node_radius <- 20
-    }
     
     border_margin <- vertex_border_width
     total_margin <- node_radius + border_margin
@@ -491,7 +532,6 @@ for (current_group in groups) {
     node_counts <- unique(stable_regions$region)
     
     angles <- 2 * pi * (seq(num_nodes - 1, 0, by = -1) / num_nodes)
-    
     
     # Loop through edges
     for (edge_id in 1:ecount(graph)) {
@@ -517,9 +557,8 @@ for (current_group in groups) {
       b <- b + 1
     }
     
-    
     # Open a PNG graphics device
-    png(filename = paste0(save_dir, "/group_", current_group, "_network.png"),
+    png(filename = file.path(region_dir, paste0("group_", current_group, "_network.png")),
         width = 10, height = 8, units = "in", res = 300, bg = "transparent")  
 
     # Plot network graph
@@ -536,10 +575,7 @@ for (current_group in groups) {
          rescale = FALSE,
          xlim = xlim, ylim = ylim)
     
-    mtext(paste0("Group ", current_group), line = -3, cex = 3, font = 2)
-    
-    #mtext(paste0("RMSD Cluster Group ", current_group), line = 0, cex = 3, font = 2)
-    #mtext(paste0("Stable Region Alpha-Carbons Within ", distance_threshold, "\u00C5"), line = -2, cex = 2, font = 3)
+    mtext(paste0("Group ", current_group), line = -2, cex = 3, font = 2)
     
     # Close the PNG graphics device
     dev.off()
@@ -558,9 +594,6 @@ for (current_group in groups) {
 ####################################################################################
 
 ### Adding RMSD cluster groups ###
-
-# Loading RMSD Cluster Data
-cluster_groups <- read.csv("Output/RMSD/RMSD_cluster_groups.csv")
 
 # Removing _chainID to just use PDB codes 
 cluster_groups <- cluster_groups %>%
@@ -620,9 +653,6 @@ for (current_group in groups) {
     
     ### Colour nodes to match with stable regions ###
     
-    # Importing stable region data
-    #stable_regions <- read_csv("Output/stable_regions/stable_regions.csv")
-    
     # Separating residues into start and end
     stable_regions <- stable_regions %>%
                         rowwise() %>%
@@ -667,7 +697,7 @@ for (current_group in groups) {
     
     
     # Open a PNG graphics device
-    png(filename = paste0(save_dir, "/group_", current_group, "_residue_distances.png"),
+    png(filename = file.path(residue_dir, paste0("group_", current_group, "_residue_distances.png")),
         width = 15, height = 15, units = "in", res = 300, bg = "transparent")  # Adjust width, height, and resolution as needed
     
       plot(graph,
@@ -683,8 +713,6 @@ for (current_group in groups) {
            vertex.color = node_colours)
       
       mtext(paste0("RMSD Cluster Group ", current_group), line = 0, cex = 3, font = 2)
-      #mtext(paste0("RMSD Cluster Group ", current_group), line = 0, cex = 3, font = 2)
-      #mtext(paste0("Residues Within ", distance_threshold, "\u00C5"), line = -2, cex = 2, font = 3)
     
     # Close the PNG graphics device
     dev.off()

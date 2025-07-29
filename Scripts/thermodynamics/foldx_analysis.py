@@ -3,8 +3,6 @@
 # Importing Packages
 from pyfoldx.structure import Structure
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
 import re
 
@@ -63,7 +61,7 @@ for pdb in pdb_files:
 
             # Load the structure using the Structure class
             st = Structure(code=pdb_id, path=pdb)
-
+            
             # We create a new Structure object with the result of the repair() method
             stRepaired = st.repair()
 
@@ -93,4 +91,4 @@ for pdb in pdb_files:
     combined_residue_energy = pd.concat([combined_residue_energy, seqRepaired], ignore_index=True)
 
 # Saving the combined results
-combined_residue_energy.to_csv('Output/thermodynamics/foldx_stability.csv', index=False)
+combined_residue_energy.to_csv(os.path.join("Output", "thermodynamics", "foldx_stability.csv"), index=False)

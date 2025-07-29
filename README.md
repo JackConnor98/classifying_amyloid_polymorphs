@@ -3,7 +3,7 @@
 ### Author: Jack P Connor
 ### Contact: bsjpc@leeds.ac.uk
 
-### Last Updated 07-07-2025
+### Last Updated 29-07-2025
 
 ## ABSTRACT
 
@@ -20,15 +20,22 @@ More than 500 amyloid structures have been solved to date to near-atomic resolut
 * Calculate the propensity for each residue in the ordered fibril core to be in a B-sheet
 
 <p align="center">
-  <img src="Figures/graphical_abstract.jpg" alt="img" width="800"/>
+  <img src="Figures/graphical_abstract.png" alt="img" width="800"/>
 </p>
 
 ## INSTALLATION
-Ensure FoldX is installed on your system and added to your path. Follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx
 
+### FoldX
+Ensure FoldX is installed on your system and add export FOLDX_BINARY=/your/path/to/foldx to your .bashrc file.
+For more information, follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx
+
+### Python Packages
+pymol-open-source, os, pandas, itertools, PIL, math, numpy, scipy, string, matplotlib, sys, csv, bs4, requests, PyPDF2, re, gzip, shutil, pyfoldx 
+
+### R Packages
+dplyr, stringr, tidyr, readr, ggplot2, dendextend, RColourBrewer, tibble, bio3d, purrr, zoo, pastecs, ggpubr, ggtext, igraph, ggrepel, FSA, XML, xml2
 
 ## Running the analysis
-
 The analysis pipeline is run in a Linux terminal using the script run_analysis.sh. In this script, you can change the run parameters to select which scripts you would like to run.
 
 
