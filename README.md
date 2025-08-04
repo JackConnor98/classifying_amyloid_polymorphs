@@ -9,6 +9,8 @@
 
 More than 500 amyloid structures have been solved to date to near-atomic resolution. This has highlighted an enormous diversity of fibril structures conforming to the canonical cross-β amyloid fold. Using α-synuclein and tau amyloid structures as models, we show that they can be clustered into topologically distinct fold families. In these classes, the same, or similar, regions pair in different ways to generate topologies that can be hierarchically clustered. Despite their different topologies, the fibrils have similar stability, as determined by FoldX. The results provide a framework to classify newly solved fibril structures as belonging to an existing class or forming a new topological cross-β fold. Furthermore, this enables comparisons between fibrils found in disease and those formed in vitro. The workflow has been automated, enabling users to interrogate new amyloid structures as they emerge using this pipeline.
 
+For more information please see the associate paper: https://doi.org/10.1016/j.str.2025.07.005
+
 ## Features
 * Web scrape the [Amyloid Atlas](https://people.mbi.ucla.edu/sawaya/amyloidatlas/) to access known published structures
 * Identify unique chains from each PDB file (intra-PDB variation)
@@ -20,7 +22,7 @@ More than 500 amyloid structures have been solved to date to near-atomic resolut
 * Calculate the propensity for each residue in the ordered fibril core to be in a B-sheet
 
 <p align="center">
-  <img src="Figures/graphical_abstract.png" alt="img" width="800"/>
+  <img src="Figures/graphical_abstract.png" alt="img" width="600"/>
 </p>
 
 ## INSTALLATION
@@ -36,7 +38,7 @@ pymol-open-source, os, pandas, itertools, PIL, math, numpy, scipy, string, matpl
 dplyr, stringr, tidyr, readr, ggplot2, dendextend, RColourBrewer, tibble, bio3d, purrr, zoo, pastecs, ggpubr, ggtext, igraph, ggrepel, FSA, XML, xml2
 
 ## Running the analysis
-The analysis pipeline is run in a Linux terminal using the script run_analysis.sh. In this script, you can change the run parameters to select which scripts you would like to run.
+The analysis pipeline is run in a Linux terminal using the script run_analysis.sh. In this script, you can change the run parameters as desired.
 
 
 
