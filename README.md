@@ -32,7 +32,7 @@ For more information please see the associated paper: https://doi.org/10.1016/j.
 ## INSTALLATION
 
 ### FoldX
-Ensure FoldX is installed on your system and add export FOLDX_BINARY=/your/path/to/foldx to your .bashrc file.
+Ensure FoldX is installed on your system and add 'export FOLDX_BINARY=/your/path/to/foldx.exe' to your .bashrc file.
 For more information, follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx
 
 ### Python Packages
