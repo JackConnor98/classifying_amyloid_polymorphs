@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Setting Run Parameters
-scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
+PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=1                    # 0 - Do not validate               | 1 - Run validation
-RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_sheet=1                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
-PNG=1                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
+RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
+thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
 ### Optional settings ###
@@ -34,7 +34,7 @@ if [ $scrape -eq  1 ]; then
     python Scripts/scrape/amyloid_atlas_scraper.py
 
     # Plotting the residues ordered in the fibril core
-    Rscript Scripts/scrape/plot_ordered_residues.R
+    Rscript Scripts/scrape/plot_ordered_residues.py
 fi
 
 if [ $PDB -eq 1 ]; then
@@ -42,7 +42,7 @@ if [ $PDB -eq 1 ]; then
     python Scripts/PDB/fetch_pdb_isolate_chains.py
 
     # Calculating the maximum Rg within a PDB
-    Rscript Scripts/PDB/Rg_plotting.R
+    python Scripts/PDB/Rg_plotting.py
 
 fi
 
@@ -51,7 +51,7 @@ if [ $validation -eq 1 ]; then
     python Scripts/validation/Q_score_scraper.py
 
     # Selecting good resolution structures
-    Rscript Scripts/validation/validating_structures.R
+    python Scripts/validation/validating_structures.py
 
 fi
 

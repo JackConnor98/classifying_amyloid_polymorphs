@@ -1,0 +1,5 @@
+conda create -n calypso
+conda activate calypso
+conda install -c conda-forge pymol-open-source
+
+pip install plotnine bs4 requests Bio

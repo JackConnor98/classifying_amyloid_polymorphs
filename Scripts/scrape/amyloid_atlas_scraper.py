@@ -77,6 +77,11 @@ def pattern_match(pattern, df, continue_selection=True):
     selected_rows = df[df["Protein"].str.contains(str(pattern), case = False)]
 
     while selected_rows.empty:
+
+        if pattern is None:
+            print("👋 Exiting program. Bye.")
+            return
+        
         print(f"\n🚫 No PDBs found matching the pattern '{pattern}'. Please try again.")
         pattern = get_user_protein_pattern(df, silent=True)
         selected_rows = df[df["Protein"].str.contains(str(pattern), case = False)]
