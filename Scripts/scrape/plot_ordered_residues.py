@@ -1,5 +1,4 @@
 import os
-import re
 import pandas as pd
 import numpy as np
 from plotnine import *
@@ -75,7 +74,7 @@ residues_long = residues_long.dropna(subset=["ordered_residues"]).reset_index(dr
 residues_long["pdb_group"] = residues_long["pdb"].astype(str) + "_" + residues_long["group"].astype(str)
   
 # =============================================================================
-# Prepare plot
+# Plotting
 # =============================================================================
 num_pdbs = len(data)
 protein_names = data["PDB ID"].unique()

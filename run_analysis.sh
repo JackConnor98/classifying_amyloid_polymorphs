@@ -15,7 +15,7 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 #########################
 
 # Would you like to add a penalty to non-overlapping residues in the RMSD calculation?
-penalty=1                       # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
+penalty=0                       # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
 
 # Set a custom cut height for the dendrogram in the RMSD analysis (Reccomened to use 0 for the first run)
 custom_cut_height=0           # 0 - Use the median euclidean distance as the cut height | Any other number will be used as the cut height
@@ -48,7 +48,7 @@ fi
 
 if [ $validation -eq 1 ]; then
     # Get Q-Scores
-    python Scripts/validation/Q_score_scraper.py
+    #python Scripts/validation/Q_score_scraper.py
 
     # Selecting good resolution structures
     python Scripts/validation/validating_structures.py
