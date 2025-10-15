@@ -36,6 +36,8 @@ for dir_path in output_dirs:
 com_and_fibril_df = pd.DataFrame()
 com_distances_df = pd.DataFrame()
 min_distance_df = pd.DataFrame()
+#chain_mapping_df = pd.DataFrame(columns=['pdb', 'original_chain', 'temp_chain', 'final_chain'])
+chain_mapping_df = pd.DataFrame()
 
 ##########################
 ### Defining functions ###
@@ -158,6 +160,19 @@ for pdb in pdb_names:
     # Step 6: Second renaming pass — temp → final (e.g., '001' → 'A')
     for temp, final in temp_to_final.items():
         cmd.alter(f"chain {temp}", f"chain='{final}'")
+
+    # Recording the chain mapping for this PDB
+    ### Issue - renaming chains during PDB handling means they dont match up to Q-score data ###
+    # Need to store the original chain IDs from the PDB files and match them to the Q-score data
+    pdb_mapping = pd.DataFrame({
+        'PDB': pdb,
+        'published_chain': list(original_to_temp.keys()),
+        'modified_chain': [temp_to_final[original_to_temp[ch]] for ch in original_to_temp]
+    })
+
+    # Append to the master DataFrame
+    chain_mapping_df = pd.concat([chain_mapping_df, pdb_mapping], ignore_index=True)
+
     ###################################################################################
 
     # Save the structure as a .pdb file in the published_structure directory
@@ -608,6 +623,7 @@ for filename in os.listdir():
 ###################
 ### SAVING DATA ###
 ###################
+chain_mapping_df.to_csv(os.path.join("Output", "PDBs", "chain_mapping.csv"), index = False)
 com_and_fibril_df.to_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"), index = False)
 com_distances_df.to_csv(os.path.join("Output", "PDBs", "COM_distances.csv"), index = False)
 min_distance_df.to_csv(os.path.join("Output", "PDBs", "min_COM_distances.csv"), index = False)

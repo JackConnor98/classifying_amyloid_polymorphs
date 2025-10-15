@@ -107,7 +107,8 @@ q_score_df = validation_data[["pdb", "Q_score", "chain", "resnum", "resname"]]
 # Changing resnum to resno to better fit other data
 q_score_df = q_score_df.rename(columns={
     "pdb": "PDB",
-    "resnum": "resno"
+    "resnum": "resno",
+    "chain": "published_chain"
 })
 
 # Converting columns to numeric
@@ -127,6 +128,18 @@ amino_acids = [
 q_score_df = q_score_df[q_score_df["resname"].isin(amino_acids)]
 
 
+### Issue - renaming chains during PDB handling means they dont match up to Q-score data ###
+# Need to store the original chain IDs from the PDB files and match them to the Q-score data
+
+# Importing chain mapping data
+chain_mapping_df = pd.read_csv(os.path.join("Output", "PDBs", "chain_mapping.csv"))
+
+# Merging chain mapping with q_score_df
+q_score_df = pd.merge(chain_mapping_df, q_score_df, on=["PDB", "published_chain"])
+
+# Renaming modified_chain to chain
+q_score_df = q_score_df.rename(columns={"modified_chain": "chain"})
+
 ### Adding in pdb_id ###
 
 # Importing data
@@ -135,7 +148,7 @@ pdb_info = pd.read_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"), sep
 # Selecting columns of interest
 pdb_info = pdb_info[["pdb_id", "PDB", "chain", "fibril"]]
 
-# Merge pdb_info and q_score_df on 'PDB' and 'chain'
+# Merge pdb_info and q_score_df on 'pdb_id' and 'chain'
 q_score_df = pd.merge(pdb_info, q_score_df, on=["PDB", "chain"])
 
 # Saving Q-Score data frame
@@ -147,7 +160,6 @@ q_score_df.to_csv(os.path.join(folder_path, "Q_Scores.csv"), index=False)
 
 # Merging resolution with q_scores
 q_score_df = pd.merge(q_score_df, resolution_df, on = "PDB")
-
 
 # Calculating the mean and standard deviation for the Q-score across all structures
 # Threshold for Q-score will me set to mean - 1SD
@@ -220,7 +232,7 @@ for i in pdb_names:
     current_mean_Q_score = float(f"{current_mean_Q_score:.3g}")  
 
     # Get unique resolution for the current PDB
-    current_resolution = q_score_df.loc[q_score_df["PDB"] == i, "resolution"].unique()
+    current_resolution = q_score_df.loc[q_score_df["pdb_id"] == i, "resolution"].unique()
 
     # Plotting current PDB Q-Scores
     p = (
@@ -230,7 +242,7 @@ for i in pdb_names:
         + geom_point(size=1)
         + scale_colour_manual(values = {"good": "black", "outlier": "grey"})
         + labs(
-            title = f"PDB = {i} | Resolution = {current_resolution[0]} Å | Mean Q-score = {current_mean_Q_score}",
+            title = f"PDB ID = {i} | Resolution = {current_resolution[0]} Å | Mean Q-score = {current_mean_Q_score}",
             x="Residue Number",
             y="Q-score",
         )
@@ -240,14 +252,14 @@ for i in pdb_names:
         + theme(
             panel_border=element_rect(linewidth = 1, fill = None),
             panel_grid_major = element_line(linewidth = 0.25, colour = "grey", linetype = "dashed"),
-            plot_title=element_text(size=16, colour="black", face="bold", ha="center"),
+            plot_title=element_text(size=14, colour="black", face="bold", ha="center"),
             axis_title=element_text(size=18, colour="black", face="bold"),
             axis_text = element_text(size = 14, colour = "black"),
             legend_position = "none"
         )
     )
 
-    #p.save(os.path.join(single_pdb_path, f"{i}_Q_score.png"), height=4, width=8, dpi=300)
+    p.save(os.path.join(single_pdb_path, f"{i}_Q_score.png"), height=4, width=8, dpi=300)
 
 
 ######################################
@@ -260,7 +272,7 @@ high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_sc
 
 # Saving a list of high_resolution PDBs
 high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] > Q_score_threshold]
-high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "High_Resolution_PDBs.csv"), index=False)
+high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_PDBs.csv"), index=False)
 
 #####################################
 ### Removing Low Q-score Residues ###
@@ -292,6 +304,9 @@ y = kde(x)
 
 # Create a DataFrame from the density data
 density_df = pd.DataFrame({"x": x, "y": y})
+
+# Saving density data
+density_df.to_csv(os.path.join(folder_path, "Q_score_density_data.csv"), index=False)
 
 # Split density_df into two for coloring
 density_below = density_df[density_df["x"] <= Q_score_threshold]
@@ -328,6 +343,85 @@ p = (
 )
 
 # Save plot
-p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
+#p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
 
 ### Stacked Bar Chart ###
+
+# Count occurrences of each resno in good_resolution
+good_resolution_counts = (
+    good_resolution.groupby("resno")
+    .size()
+    .reset_index(name="good_count")
+)
+
+# Count occurrences of each resno in filtered_df
+total_counts = (
+    filtered_df.groupby("resno")
+    .size()
+    .reset_index(name="total_count")
+)
+
+# Merging good and total counts
+count_df = pd.merge(total_counts, good_resolution_counts, on="resno", how="left")
+
+# Fill NaN values in good_count with 0 (in case some residues have no good counts)
+count_df["good_count"] = count_df["good_count"].fillna(0)
+
+print(count_df)
+
+# Calculate % good and bad count
+count_df["percentage"] = count_df["good_count"] / count_df["total_count"] * 100
+count_df["bad_count"] = count_df["total_count"] - count_df["good_count"]
+
+# Transform to long format
+long_count_df = count_df.melt(
+    id_vars=["resno", "percentage"],    
+    value_vars=["good_count", "bad_count"],  
+    var_name="count_type",               
+    value_name="count"                   
+)
+
+# Saving bar chart data
+long_count_df.to_csv(os.path.join(folder_path, "resolution_bar_chart_data.csv"), index=False)
+
+# Plotting stacked bar chart
+p = (
+    ggplot(long_count_df, aes(x="resno", y="count", fill="count_type"))
+    + geom_bar(stat = "identity", alpha=0.75, colour="black")
+    + scale_fill_manual(values={"good_count": "blue", "bad_count": "grey"}, labels={"good_count": "Good", "bad_count": "Poor"})
+    + labs(x="Residue Number", y="Count", fill="Resolution")
+    + scale_x_continuous(breaks=np.arange(0, max_x+1, 5), expand=(0.01, 0, 0.01, 0))
+    + scale_y_continuous(expand=(0, 0, 0.05, 0.))
+    + theme_classic()
+    + theme(
+        panel_border=element_rect(linewidth=1, fill=None),
+        axis_title=element_text(size=18, face="bold", colour="black"),
+        axis_text=element_text(size=14, colour="black"),
+        legend_title=element_text(size=14, face="bold", colour="black"),
+        legend_text=element_text(size=10, colour="black")
+    )
+)
+
+p.save(os.path.join(save_path, "resolution_bar_chart.png"), height=4, width=8, dpi=300)
+
+
+# Important Note:
+# Possible issue with chains having different number of residues
+# A single residue may occur above and below the Q-score threshold in different chains of the same fibril
+# Current solution - if the residue occurs at good resolution at least once in a fibril - it is included
+
+# Adding back in other information
+pdb_info_no_chains = pdb_info[["pdb_id", "PDB", "fibril"]].drop_duplicates()
+tmp = pd.merge(good_resolution, pdb_info_no_chains, on="pdb_id")
+
+# Selecting residues that are present in at least one chain of a fibril at good resolution
+high_resolution_residues = tmp[['pdb_id', 'fibril', 'resno']].drop_duplicates()
+
+# Putting in ascending residue order
+high_resolution_residues = high_resolution_residues.sort_values(
+    by=["pdb_id", "fibril", "resno"],
+    ascending=[True, True, True]
+).reset_index(drop=True)
+
+# Saving high resolution residues
+high_resolution_residues.to_csv(os.path.join(folder_path, "high_resolution_residues.csv"), index=False)

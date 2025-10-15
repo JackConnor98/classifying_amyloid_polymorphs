@@ -3,8 +3,8 @@
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=1                    # 0 - Do not validate               | 1 - Run validation
-RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
+validation=0                    # 0 - Do not validate               | 1 - Run validation
+RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
@@ -34,7 +34,7 @@ if [ $scrape -eq  1 ]; then
     python Scripts/scrape/amyloid_atlas_scraper.py
 
     # Plotting the residues ordered in the fibril core
-    Rscript Scripts/scrape/plot_ordered_residues.py
+    python Scripts/scrape/plot_ordered_residues.py
 fi
 
 if [ $PDB -eq 1 ]; then
@@ -48,7 +48,7 @@ fi
 
 if [ $validation -eq 1 ]; then
     # Get Q-Scores
-    #python Scripts/validation/Q_score_scraper.py
+    python Scripts/validation/Q_score_scraper.py
 
     # Selecting good resolution structures
     python Scripts/validation/validating_structures.py
