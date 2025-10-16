@@ -4,7 +4,7 @@
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
@@ -61,9 +61,7 @@ if [ $RMSD -eq 1 ]; then
     python Scripts/RMSD/unique_chain_alignment.py $penalty
 
     # Performing RMSD analysis
-    Rscript Scripts/RMSD/RMSD_analysis.R <<EOF
-custom_cut_height=$custom_cut_height
-EOF
+    python Scripts/RMSD/RMSD_analysis.py $custom_cut_height
 
 fi
 

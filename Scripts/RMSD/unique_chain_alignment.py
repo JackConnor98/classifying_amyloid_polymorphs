@@ -30,7 +30,7 @@ print(len(object_names))
 
 ### Removing PDBs with poor resolution ###
 # Loading high resolution PDB IDs
-high_res_df = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_pdb_ids.txt"), delim_whitespace=True)
+high_res_df = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_pdb_ids.csv"), sep=",")
 high_res_ids = set(high_res_df['pdb_id'].astype(str))  # Just in case you're storing ints like a noob
 # Filter pdb_files and object_names based on high_res_ids
 filtered = [(f, name) for f, name in zip(pdb_files, object_names) if name in high_res_ids]

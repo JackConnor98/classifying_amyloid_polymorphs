@@ -272,7 +272,7 @@ high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_sc
 
 # Saving a list of high_resolution PDBs
 high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] > Q_score_threshold]
-high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_PDBs.csv"), index=False)
+high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
 
 #####################################
 ### Removing Low Q-score Residues ###

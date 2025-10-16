@@ -123,6 +123,7 @@ q_score_df <- validation_data %>% subset(select = c("pdb", "Q_score", "chain", "
 # Changing resnum to resno to better fit other data
 names(q_score_df)[names(q_score_df) == "pdb"] <- "PDB"
 names(q_score_df)[names(q_score_df) == "resnum"] <- "resno"
+names(q_score_df)[names(q_score_df) == "chain"] <- "published_chain"
 
 # Converting columns to numeric
 q_score_df[, c("Q_score", "resno")] <- lapply(q_score_df[, c("Q_score", "resno")], as.numeric)
@@ -136,6 +137,18 @@ amino_acids <- c("ALA", "ARG", "ASN", "ASP", "CYS", "GLU", "GLN", "GLY", "HIS", 
 
 # Removing non-amino acid components
 q_score_df <- q_score_df %>% filter(resname %in% amino_acids)
+
+### Issue - renaming chains during PDB handling means they dont match up to Q-score data ###
+# Need to store the original chain IDs from the PDB files and match them to the Q-score data
+
+# Importing chain mapping data
+chain_mapping_df <- read.csv(file.path("Output", "PDBs", "chain_mapping.csv"))
+
+# Merging chain mapping with q_score_df
+q_score_df <- merge(chain_mapping_df, q_score_df, by = c("PDB","published_chain"))
+
+# Renaming modified_chain to chain
+names(q_score_df)[names(q_score_df) == "modified_chain"] <- "chain"
 
 ### Adding in pdb_id ###
 
