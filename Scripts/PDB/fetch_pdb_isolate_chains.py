@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 import string
+from Bio.SeqUtils import seq1
+
 
 #############################################################################################################################
 
@@ -19,6 +21,11 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
     for line in file:
         # Strip any leading/trailing whitespaces and append the name to the list
         pdb_names.append(line.strip())
+
+# keep = {"8owd"}
+# with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
+#     next(file)  # skip header
+#     pdb_names = [line.strip() for line in file if line.strip() in keep]
 
 # Making output directories
 output_dirs = [
@@ -36,7 +43,6 @@ for dir_path in output_dirs:
 com_and_fibril_df = pd.DataFrame()
 com_distances_df = pd.DataFrame()
 min_distance_df = pd.DataFrame()
-#chain_mapping_df = pd.DataFrame(columns=['pdb', 'original_chain', 'temp_chain', 'final_chain'])
 chain_mapping_df = pd.DataFrame()
 
 ##########################
@@ -130,8 +136,40 @@ for pdb in pdb_names:
 
     print(f"\nAnalyzing {pdb}")
 
-    # Downloading the PDB file
-    cmd.fetch(pdb)
+    # Fetch the pdb
+    cmd.fetch(pdb, type="pdb1")
+
+    # check whether PyMOL created the object
+    if not cmd.get_object_list(pdb):
+        print(f"Biological assembly failed for {pdb}, retrying...")
+        cmd.reinitialize()
+        cmd.fetch(pdb)
+        check_states = False
+    else:
+        check_states = True
+
+    ###################################################################################
+
+    # Handling PDBs with multiple states (e.g. 8azs)
+
+    if check_states:
+        # Count how many states (models) are present
+        n_states = cmd.count_states(pdb)
+        if n_states > 1:
+            print(f"{pdb} has {n_states} state(s).")
+            print(f"→ Splitting {n_states} states and recombining into one object...")
+            # Split all states into separate objects
+            cmd.split_states(pdb)
+            # Delete the original object
+            cmd.delete(pdb)
+            # Create an empty object to hold the merged structure
+            cmd.create(pdb, "none")
+            # Loop over each split state and copy it into the main object
+            for i in range(1, n_states + 1):
+                state_obj = f"{pdb}_{i:04d}"  # e.g. 8AZS_0001
+                cmd.copy_to(pdb, state_obj)
+                cmd.delete(state_obj)  # cleanup
+
 
     ###################################################################################
     # Handling poorly formatted chain names within PDBs as it can cause saving conflicts
@@ -179,9 +217,10 @@ for pdb in pdb_names:
     output_path = os.path.join("Output", "PDBs", "published_structure", f"{pdb}.pdb")
     cmd.save(output_path, pdb)
 
+
     # Deleting the .cif files that automatically save
     for filename in os.listdir():
-        if filename.endswith(".cif"):
+        if filename.endswith((".cif", ".pdb1")):
             file_path = os.path.join(filename)
             os.remove(file_path)
 
@@ -197,6 +236,7 @@ for pdb in pdb_names:
     # Initialize lists to store atom information
     chains = []
     residues = []
+    residue_names = []
     atom_numbers = []
     atom_ids = []
     x_coords = []
@@ -208,6 +248,7 @@ for pdb in pdb_names:
     for atom in atom_data.atom:
         chains.append(atom.chain)
         residues.append(atom.resi)
+        residue_names.append(atom.resn)
         atom_numbers.append(atom.index)
         atom_ids.append(atom.name)
         x_coords.append(atom.coord[0])
@@ -218,6 +259,7 @@ for pdb in pdb_names:
     data = {
         "chain": chains,
         "residue": residues,
+        "residue_name": residue_names,
         "atom_number": atom_numbers,
         "atom_id": atom_ids,
         "x": x_coords,
@@ -302,19 +344,42 @@ for pdb in pdb_names:
         # Create a dataframe containing the closest non-overlapping chain for each chain
         closest_chains_df = pd.DataFrame(closest_chains_data)
 
+        print(closest_chains_df)
+
         # Initialize a set to keep track of chains that have already been mapped
         mapped_chains = set()
 
         # Initialize a list to store the filtered closest chains data
         filtered_closest_chains_data = []
 
+        # Issue - When PDBs are published with incorrect residue numbering, chains with identical sequences but different residue numbers can be fused together
+        # Build a dictionary of sequences for each chain
+        chain_seqs = {}
+        for chain in df['chain'].unique():
+            chain_df = df[df['chain'] == chain].copy()
+
+            # Convert 'residue' to integer, ignoring insertion codes
+            chain_df['residue_number'] = chain_df['residue'].str.extract(r'(\d+)').astype(int)
+
+            # Sort by numeric residue number
+            chain_df.sort_values('residue_number', inplace=True)
+
+            # Keep one row per residue number
+            unique_residues = chain_df.drop_duplicates(subset='residue_number')
+
+            # Build sequence
+            seq = ''.join(seq1(r) for r in unique_residues['residue_name'])
+            chain_seqs[chain] = seq
+            #print(f"{chain} - {seq}")
+
         # Iterate over the closest_chains_df and filter out redundant mappings
         for _, row in closest_chains_df.iterrows():
             chain = row['chain']
             closest_chain = row['closest_non_overlapping_chain']
             
-            # Check if this pair has already been included in the reverse direction
-            if closest_chain not in mapped_chains:
+            # Check if this pair has already been included in the reverse direction or if they have the same sequence
+            if closest_chain not in mapped_chains and chain_seqs[chain] != chain_seqs[closest_chain]:
+            #if closest_chain not in mapped_chains:
                 filtered_closest_chains_data.append(row)
                 # Mark both chains as mapped
                 mapped_chains.add(chain)
@@ -337,7 +402,8 @@ for pdb in pdb_names:
             cmd.alter(selection, f"chain = '{row['chain']}'")
 
         # Save the modified structure as a new PDB file
-        cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), pdb)
+        #cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), pdb)
+        cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), selection='all', state=0)
 
     ##############################
     ### CALCULATING COM AND Rg ###
@@ -403,12 +469,16 @@ for pdb in pdb_names:
 
         distance_threshold = mean_distance + (mean_distance * 0.5)
 
+    # Single layer of 2 protofilaments can have very large mean resulting in recognising only one fibril
+    if num_chains == 2:
+        distance_threshold = 8
+
     else:
-        distance_threshold = 4
+        distance_threshold = 8
 
     # Single protofilament structures can have a very low mean so setting a minimum value
-    if distance_threshold < 4:
-        distance_threshold = 4
+    if distance_threshold < 8:
+        distance_threshold = 8
 
     # Print the mean distance
     print("\nDistance Threshold = ", distance_threshold)

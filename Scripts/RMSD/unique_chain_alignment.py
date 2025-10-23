@@ -201,6 +201,5 @@ plt.xlabel('rmsd')
 plt.ylabel('rmsd_with_na')
 plt.title('RMSD vs RMSD with NA penalty')
 plt.grid(True)
-plt.show()
 
 plt.savefig(os.path.join(save_path, "rmsd_and_na_penalty.png"), dpi=300, bbox_inches='tight')

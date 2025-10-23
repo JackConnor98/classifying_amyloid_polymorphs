@@ -1,5 +1,6 @@
 conda create -n calypso
 conda activate calypso
 conda install -c conda-forge pymol-open-source
+conda install -c bioconda muscle
 
-pip install plotnine bs4 requests Bio scipy
+pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2

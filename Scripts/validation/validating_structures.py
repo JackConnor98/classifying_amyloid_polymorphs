@@ -179,6 +179,13 @@ PDB_q_score = (
 # Putting in descending order
 PDB_q_score = PDB_q_score.sort_values(by="mean_Q_score", ascending=False)
 
+# Making pdb_id an ordered categorical variable for plotting
+PDB_q_score["pdb_id"] = pd.Categorical(
+    PDB_q_score["pdb_id"],
+    categories=PDB_q_score["pdb_id"].tolist(),
+    ordered=True
+)
+
 # Saving the mean Q-score for each PDB
 PDB_q_score.to_csv(os.path.join(folder_path, "mean_PDB_Q_score.csv"), index=False)
 
@@ -204,7 +211,7 @@ p = (
     )
 )
 
-#p.save(os.path.join(save_path, "Mean_PDB_Q_scores.png"), height=4, width=8, dpi=300)
+p.save(os.path.join(save_path, "Mean_PDB_Q_scores.png"), height=4, width=8, dpi=300)
 
 ###############################################################
 ### Plotting each PDB individually for quality/sense checks ###

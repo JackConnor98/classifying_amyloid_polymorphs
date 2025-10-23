@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# TODO
+# Make an exclusion list text file that records PDBs that are excluded from analysis and the reason why
+    # e.g. XXXX exlcuded due to not being cryoEM
+    # e.g. XXXX excluded as Q-score data not available
+    # e.g. XXXX excluded due to poor resolution
+    # e.g. XXXX excluded due to EMDB data not available
+
+# Handle incorrect sequence numbering in pdbs
+# Calculate intersheet spacing
+# Fix fibril assignment
+# Some PDBs fetch as single chain despite being listed on amyloid atlas as multiple chains e.g. 8azt 
+# 8qnz - single chain on PDB but 2 chains on amyloid atlas
+
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
@@ -15,7 +28,7 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 #########################
 
 # Would you like to add a penalty to non-overlapping residues in the RMSD calculation?
-penalty=0                       # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
+penalty=0                     # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
 
 # Set a custom cut height for the dendrogram in the RMSD analysis (Reccomened to use 0 for the first run)
 custom_cut_height=0           # 0 - Use the median euclidean distance as the cut height | Any other number will be used as the cut height
@@ -39,7 +52,7 @@ fi
 
 if [ $PDB -eq 1 ]; then
     # Fetch pdbs to get .cif files
-    python Scripts/PDB/fetch_pdb_isolate_chains.py
+    #python Scripts/PDB/fetch_pdb_isolate_chains.py
 
     # Calculating the maximum Rg within a PDB
     python Scripts/PDB/Rg_plotting.py
@@ -69,18 +82,19 @@ fi
 if [ $thermodynamics -eq 1 ]; then
 
    # Getting fibril twist and rise
-   python Scripts/thermodynamics/EMDB_scraper.py
+   #python Scripts/thermodynamics/EMDB_scraper.py
 
    # Extend the asymetric units to a layer depth of 10 chains
-   python Scripts/thermodynamics/extend_fibril_layers.py
+   #python Scripts/thermodynamics/extend_fibril_layers.py
 
    # Calculate the FoldX per residue stability
    python Scripts/thermodynamics/foldx_analysis.py
 
    # Plotting thermodynamic results
-   Rscript Scripts/thermodynamics/thermodynamics_plotting.R <<EOF
-remove_poorly_resolved=$remove_poorly_resolved
-EOF
+   #python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved
+#    Rscript Scripts/thermodynamics/thermodynamics_plotting.R <<EOF
+# remove_poorly_resolved=$remove_poorly_resolved
+# EOF
 fi
 
 if [ $stable_regions -eq 1 ]; then

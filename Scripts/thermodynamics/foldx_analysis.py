@@ -5,6 +5,7 @@ from pyfoldx.structure import Structure
 import pandas as pd
 import os
 import re
+import shutil
 
 #############################################################################################################################
 
@@ -92,3 +93,7 @@ for pdb in pdb_files:
 
 # Saving the combined results
 combined_residue_energy.to_csv(os.path.join("Output", "thermodynamics", "foldx_stability.csv"), index=False)
+
+# Deleting temporary .foldx folder
+if os.path.exists(".foldx"):
+    shutil.rmtree(".foldx")

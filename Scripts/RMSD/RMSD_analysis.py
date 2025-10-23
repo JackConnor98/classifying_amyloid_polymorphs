@@ -45,6 +45,13 @@ for i in amyloid_names:
     # Sorting RMSD in ascending order
     x = x.sort_values(by='rmsd', ascending=True)
 
+    # Making pdb_id an ordered categorical variable for plotting
+    x["mob_name"] = pd.Categorical(
+        x["mob_name"],
+        categories=x["mob_name"].tolist(),
+        ordered=True
+    )
+
     p = (
         ggplot(x, aes(x='mob_name', y='rmsd')) 
         + geom_point(size = 4)
@@ -125,7 +132,7 @@ p = (
     + geom_point(size=1.5) 
     + geom_line(size=0.5)
     + annotate("segment", x=1, xend=len(heights), y=float(custom_cut_height), yend=float(custom_cut_height), color="red", linetype="dashed", size=0.75)
-    + scale_x_continuous(breaks=range(1, len(heights)+1, 1), expand = (0, 0.05))
+    + scale_x_continuous(breaks=range(0, len(heights)+1, 10), expand = (0, 0.05))
     + scale_y_continuous(expand = (0, 0, 0.05, 0))
     + labs(title="", 
            x="Groups", 
@@ -143,10 +150,9 @@ p = (
 # Saving plot
 p.save(os.path.join(output_dir, "scree_plot.png"), height=4, width=8, dpi=300)
 
-
-
-
+##################
 ### Dendrogram ###
+##################
 
 # Get the dendrogram order
 leaf_order = leaves_list(hc_average)
