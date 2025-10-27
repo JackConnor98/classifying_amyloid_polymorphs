@@ -17,7 +17,7 @@
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
+RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
@@ -52,10 +52,13 @@ fi
 
 if [ $PDB -eq 1 ]; then
     # Fetch pdbs to get .cif files
-    #python Scripts/PDB/fetch_pdb_isolate_chains.py
+    python Scripts/PDB/fetch_pdb_isolate_chains.py
 
     # Calculating the maximum Rg within a PDB
     python Scripts/PDB/Rg_plotting.py
+
+    # Sequence aligning PDBs
+    python Scripts/PDB/sequence_alignment.py
 
 fi
 

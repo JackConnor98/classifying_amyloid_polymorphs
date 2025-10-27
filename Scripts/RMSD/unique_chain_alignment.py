@@ -25,8 +25,8 @@ pdb_path = os.path.join("Output", "PDBs", "unique_chains")
 pdb_files = [file for file in os.listdir(pdb_path) if file.endswith(".pdb")]
 object_names = [i.split(".")[0] for i in pdb_files]
 
-print(len(pdb_files))
-print(len(object_names))
+# print(len(pdb_files))
+# print(len(object_names))
 
 ### Removing PDBs with poor resolution ###
 # Loading high resolution PDB IDs
@@ -36,8 +36,8 @@ high_res_ids = set(high_res_df['pdb_id'].astype(str))  # Just in case you're sto
 filtered = [(f, name) for f, name in zip(pdb_files, object_names) if name in high_res_ids]
 pdb_files, object_names = zip(*filtered) if filtered else ([], [])
 
-print(len(pdb_files))
-print(len(object_names))
+# print(len(pdb_files))
+# print(len(object_names))
 
 
 # Initialise variable to store rmsd abd ca positions for each comparison
