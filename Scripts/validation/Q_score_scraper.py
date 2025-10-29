@@ -25,6 +25,8 @@ with open("Output/pdb_names.txt", "r") as file:
         # Strip any leading/trailing whitespaces and append the name to the list
         pdb.append(line.strip())
 
+# Initialising list to store PDBs that are missing Q-score data
+missing_validation = []
 
 for i in pdb:
     # adding pdb to the URL search
@@ -53,7 +55,36 @@ for i in pdb:
         
         else:
             print("Validation link not found")
+            missing_validation.append(i)
 
     except AttributeError:
         print("Error finding validation link")
+        missing_validation.append(i)
+
+### Adding PDBs to excluded list ###
+excluded_file = os.path.join("Output", "excluded_list.txt")
+file_exists = os.path.exists(excluded_file) # Check if file exists
+
+# Getting a list of pdbs already added to exclusion list to avoid duplicate entries
+existing_pdbs = set()
+if file_exists:
+    with open(excluded_file, "r") as f:
+        for line in f:
+            if line.strip() and not line.startswith("PDB ID"):
+                existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
+
+# Adding missing PDBs with missing Q-scores to excluded list
+if missing_validation:
+    with open(excluded_file, "a") as f:
+        # Write header only if the file didn't exist before
+        if not file_exists:
+            f.write("PDB ID\tReason\n")
+
+        # Write your excluded entries
+        for pdb in missing_validation:
+            if pdb not in existing_pdbs:    
+                line = f"{pdb}\tQ-Score data not found\n"
+                f.write(line)
+else:
+    print("\n🎉 All PDBs have validation data! No failures found.")
 

@@ -295,8 +295,41 @@ PDB_q_score["pdb_id"] = PDB_q_score["pdb_id"].astype(str)
 high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_score_threshold].tolist()
 
 # Saving a list of high_resolution PDBs
-high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] > Q_score_threshold]
+high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
 high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
+
+#################################################
+### Adding Low Q-score PDBs to exclusion list ###
+#################################################
+low_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] < Q_score_threshold].tolist()
+
+excluded_file = os.path.join("Output", "excluded_list.txt")
+file_exists = os.path.exists(excluded_file) # Check if file exists
+
+# Getting a list of pdbs already added to exclusion list to avoid duplicate entries
+existing_pdbs = set()
+if file_exists:
+    with open(excluded_file, "r") as f:
+        for line in f:
+            if line.strip() and not line.startswith("PDB ID"):
+                existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
+
+# Adding missing PDBs with missing Q-scores to excluded list
+if low_resolutuion_PDBs:
+    with open(excluded_file, "a") as f:
+        # Write header only if the file didn't exist before
+        if not file_exists:
+            f.write("PDB ID\tReason\n")
+
+        # Write your excluded entries
+        for pdb in low_resolutuion_PDBs:
+            if pdb not in existing_pdbs:  
+                line = f"{pdb}\tMean Q-Score below threshold\n"
+                f.write(line)
+
+    print(f"\n{len(low_resolutuion_PDBs)} PDBs found below the Q-score threshold")
+else:
+    print("\n🎉 All PDBs are of sufficient resolution. No PDBs removed.")
 
 #####################################
 ### Removing Low Q-score Residues ###

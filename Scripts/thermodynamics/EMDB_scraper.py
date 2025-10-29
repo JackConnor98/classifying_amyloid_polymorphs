@@ -41,6 +41,7 @@ for i in pdb:
 
 emdb_numbers = [emdb for pdb, emdb in emdb_results]
 results = []
+missing_data = []
 
 for i in range(len(emdb_numbers)):
     if emdb_numbers[i] != "NA":
@@ -111,6 +112,7 @@ for i in range(len(emdb_numbers)):
             print("\nHandedness: ", handed)
         else:
             results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
+            missing_data.append(pdb[i])
             print("No match found.")
 
         # Clean up files
@@ -128,3 +130,42 @@ with open(os.path.join("Output", "emdb_data.txt"), "w") as file:
         file.write(f"{pdb_value}\t{emdb_value}\t{twist_value}\t{rise_value}\t{half_pitch}\t{handed}\n")
 
 print("Results saved to 'Output/emdb_data.txt'")
+
+#######################################################
+### Adding PDBs missing EMDB data to exclusion list ###
+#######################################################
+
+excluded_file = os.path.join("Output", "excluded_list.txt")
+file_exists = os.path.exists(excluded_file) # Check if file exists
+
+# Getting a list of pdbs already added to exclusion list to avoid duplicate entries
+existing_pdbs = set()
+if file_exists:
+    with open(excluded_file, "r") as f:
+        for line in f:
+            if line.strip() and not line.startswith("PDB ID"):
+                existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
+
+# Adding missing PDBs with missing Q-scores to excluded list
+if missing_data:
+    with open(excluded_file, "a") as f:
+        # Write header only if the file didn't exist before
+        if not file_exists:
+            f.write("PDB ID\tReason\n")
+
+        # Write your excluded entries
+        for pdb in missing_data:
+            if pdb not in existing_pdbs:  
+                line = f"{pdb}\tEMDB data not found\n"
+                f.write(line)
+
+    print(f"\nEMDB data not found for {len(missing_data)} PDB(s)")
+else:
+    print("\n🎉 EMDB data found for all PDBs.")
+
+
+
+
+
+
+

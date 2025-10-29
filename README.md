@@ -3,7 +3,7 @@
 ### Author: Jack P Connor
 ### Contact: bsjpc@leeds.ac.uk
 
-### Last Updated 12-10-2025
+### Last Updated 29-10-2025
 
 <p align="center">
   <img src="Figures/Calypso.png" alt="img" width="600"/>
@@ -33,16 +33,19 @@ For more information please see the associated paper: https://doi.org/10.1016/j.
 
 ### FoldX
 Ensure FoldX is installed on your system and add 'export FOLDX_BINARY=/your/path/to/foldx.exe' to your .bashrc file.
-For more information, follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx
+For more information, follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx.
+Important note - Under the academic licence, the FoldX license agreement ends on the 31st December of each year. To continue using FoldX the FoldX.exe needs to be redownloaded and added to your path as described in PyFoldX's installation.
+
+### Conda Virtual Environment
+conda create -n calypso
+conda activate calypso
+conda install -c conda-forge pymol-open-source bioconda muscle
 
 ### Python Packages
-pymol-open-source, os, pandas, itertools, PIL, math, numpy, scipy, string, matplotlib, sys, csv, bs4, requests, PyPDF2, re, gzip, shutil, pyfoldx 
-
-### R Packages
-dplyr, stringr, tidyr, readr, ggplot2, dendextend, RColourBrewer, tibble, bio3d, purrr, zoo, pastecs, ggpubr, ggtext, igraph, ggrepel, FSA, XML, xml2
+pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2
 
 ## Running the analysis
-The analysis pipeline is run in a Linux terminal using the script run_analysis.sh. In this script, you can change the run parameters as desired.
+The analysis pipeline is using the script run_analysis.sh. In this script, you can change the run parameters as desired.
 
 
 
