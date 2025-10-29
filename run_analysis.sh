@@ -1,23 +1,20 @@
 #!/bin/bash
 
 # TODO
-# Make an exclusion list text file that records PDBs that are excluded from analysis and the reason why
+# Make an exclusion list that records PDBs that are excluded from analysis and the reason why
     # e.g. XXXX exlcuded due to not being cryoEM
     # e.g. XXXX excluded as Q-score data not available
     # e.g. XXXX excluded due to poor resolution
     # e.g. XXXX excluded due to EMDB data not available
-
-# Handle incorrect sequence numbering in pdbs
 # Calculate intersheet spacing
-# Fix fibril assignment
-# Some PDBs fetch as single chain despite being listed on amyloid atlas as multiple chains e.g. 8azt 
-# 8qnz - single chain on PDB but 2 chains on amyloid atlas
+# Make a gui for amyloid atlas scraping where you can click to select/deselect certain entries
+
 
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
@@ -85,19 +82,17 @@ fi
 if [ $thermodynamics -eq 1 ]; then
 
    # Getting fibril twist and rise
-   #python Scripts/thermodynamics/EMDB_scraper.py
+   python Scripts/thermodynamics/EMDB_scraper.py
 
    # Extend the asymetric units to a layer depth of 10 chains
-   #python Scripts/thermodynamics/extend_fibril_layers.py
+   python Scripts/thermodynamics/extend_fibril_layers.py
 
    # Calculate the FoldX per residue stability
    python Scripts/thermodynamics/foldx_analysis.py
 
    # Plotting thermodynamic results
-   #python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved
-#    Rscript Scripts/thermodynamics/thermodynamics_plotting.R <<EOF
-# remove_poorly_resolved=$remove_poorly_resolved
-# EOF
+   python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved
+
 fi
 
 if [ $stable_regions -eq 1 ]; then

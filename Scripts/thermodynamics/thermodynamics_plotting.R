@@ -138,15 +138,16 @@ filtered_df <- merge(pdb_id_data, filtered_df, by = c("PDB", "fibril"))
 
 ################################################################################
 
+# Importing data
+high_resolution_residues <- read.csv(file.path("Output", "Validation", "high_resolution_residues.csv"))
+
+
 if (remove_poorly_resolved == 1) {
   
   ##############################################
   ### Removing residues with poor resolution ###
   ##############################################
-  
-  # Importing data
-  high_resolution_residues <- read.csv(file.path("Output", "Validation", "high_resolution_residues.csv"))
-  
+
   # Renaming columns to match df
   names(high_resolution_residues)[names(high_resolution_residues) == "resno"] <- "Pos"
   
