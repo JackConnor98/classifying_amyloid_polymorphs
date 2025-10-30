@@ -172,28 +172,28 @@ stabilising_threshold = mean_stability - SD_stability
 destabilising_threshold = mean_stability + SD_stability
 
 # Density Plot
-# p = (
-#     ggplot(mean_per_res, aes(x = "mean_energy", group = "pdb_id"))
-#     + geom_density()
-#     + geom_vline(xintercept = 0, colour = "black", size = 1, linetype = "dashed", alpha = 0.9)
-#     + scale_x_continuous(breaks=range(-100, 100, 1))
-#     + scale_y_continuous(expand = (0, 0, 0.05, 0))
-#     + labs(title="", 
-#            x=r'$\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)', 
-#            y="Density")
-#     + theme_classic()
-#     + theme(
-#         panel_border = element_rect(color = "black", size = 1.5),
-#         panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         axis_title = element_text(size = 20, face = "bold"),
-#         axis_text = element_text(size = 14, colour = "black"),
-#         legend_position = "none"
-#     )
-# )
+p = (
+    ggplot(mean_per_res, aes(x = "mean_energy", group = "pdb_id"))
+    + geom_density()
+    + geom_vline(xintercept = 0, colour = "black", size = 1, linetype = "dashed", alpha = 0.9)
+    + scale_x_continuous(breaks=range(-100, 100, 1))
+    + scale_y_continuous(expand = (0, 0, 0.05, 0))
+    + labs(title="", 
+           x=r'$\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)', 
+           y="Density")
+    + theme_classic()
+    + theme(
+        panel_border = element_rect(color = "black", size = 1.5),
+        panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        axis_title = element_text(size = 20, face = "bold"),
+        axis_text = element_text(size = 14, colour = "black"),
+        legend_position = "none"
+    )
+)
 
 # Saving density plot
-# p.save(os.path.join(deltaG_analysis_path, "stability_density_plot.png"), height=6, width=8, dpi=300)
+p.save(os.path.join(deltaG_analysis_path, "stability_density_plot.png"), height=6, width=8, dpi=300)
 
 # Line Plot
 
@@ -203,30 +203,30 @@ mean_per_res['segment'] = mean_per_res.groupby('pdb_id')['Pos'].diff().ne(1).cum
 mean_per_res['interaction'] = mean_per_res['pdb_id'].astype(str) + "_" + mean_per_res['segment'].astype(str)
 
 # Plotting line plot
-# p = (
-#     ggplot(mean_per_res, aes(x='Pos'))
-#     + geom_line(aes(y='mean_energy', group='interaction'), size=0.75, alpha=0.25)
-#     + geom_hline(yintercept=0, colour="blue", size=0.75, linetype="solid", alpha=0.9)
-#     + scale_x_continuous(
-#         breaks=np.arange(0, 9999999, 1),
-#         labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
-#         expand=(0.01, 0.01))
-#     + labs(
-#         y=r'$\mathbf{\Delta G^{\circ}\ per\ residue\ (kcal\cdot mol^{-1})}$',
-#         x="Residue Number"
-#     )
-#     + theme_classic()
-#     + theme(
-#         panel_border = element_rect(color = "black", size = 1.5),
-#         panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         axis_title = element_text(size = 20, face = "bold"),
-#         axis_text = element_text(size = 14, colour = "black"),
-#     )
-# )
+p = (
+    ggplot(mean_per_res, aes(x='Pos'))
+    + geom_line(aes(y='mean_energy', group='interaction'), size=0.75, alpha=0.25)
+    + geom_hline(yintercept=0, colour="blue", size=0.75, linetype="solid", alpha=0.9)
+    + scale_x_continuous(
+        breaks=np.arange(0, 9999999, 1),
+        labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
+        expand=(0.01, 0.01))
+    + labs(
+        y=r'$\mathbf{\Delta G^{\circ}\ per\ residue\ (kcal\cdot mol^{-1})}$',
+        x="Residue Number"
+    )
+    + theme_classic()
+    + theme(
+        panel_border = element_rect(color = "black", size = 1.5),
+        panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        axis_title = element_text(size = 20, face = "bold"),
+        axis_text = element_text(size = 14, colour = "black"),
+    )
+)
 
 # Saving line plot
-# p.save(os.path.join(deltaG_analysis_path, "stability_line_plot.png"), height=6, width=12, dpi=300)
+p.save(os.path.join(deltaG_analysis_path, "stability_line_plot.png"), height=6, width=12, dpi=300)
 
 ######################################
 ### Plotting each PDB individually ###
@@ -234,35 +234,35 @@ mean_per_res['interaction'] = mean_per_res['pdb_id'].astype(str) + "_" + mean_pe
 
 pdb_names = filtered_df["pdb_id"].unique()
 
-# for pdb in pdb_names:
-#     x = mean_per_res[mean_per_res["pdb_id"] == pdb]
+for pdb in pdb_names:
+    x = mean_per_res[mean_per_res["pdb_id"] == pdb]
         
-#     p = (
-#         ggplot(x, aes(x='Pos'))
-#         + geom_line(aes(y='mean_energy', group='interaction'), size=2)
-#         + geom_hline(yintercept = 0, colour = "blue", size = 1, linetype = "dashed", alpha = 0.9)
-#         + geom_hline(yintercept = stabilising_threshold, colour = "red", size = 1, linetype = "dashed", alpha = 0.9)
-#         + scale_x_continuous(
-#             breaks=np.arange(0, 9999999, 1),
-#             labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
-#             expand=(0.01, 0.01))
-#         + labs(
-#             title = f"{pdb}",
-#             y=r'$\mathbf{\Delta G^{\circ}\ per\ residue\ (kcal\cdot mol^{-1})}$',
-#             x="Residue Number"
-#         )
-#         + theme_classic()
-#         + theme(
-#             panel_border = element_rect(color = "black", size = 1.5),
-#             panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#             panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#             plot_title = element_text(size = 20, face = "bold", hjust = 0.5),
-#             axis_title = element_text(size = 20, face = "bold"),
-#             axis_text = element_text(size = 14, colour = "black"),
-#         )
-#     )
+    p = (
+        ggplot(x, aes(x='Pos'))
+        + geom_line(aes(y='mean_energy', group='interaction'), size=2)
+        + geom_hline(yintercept = 0, colour = "blue", size = 1, linetype = "dashed", alpha = 0.9)
+        + geom_hline(yintercept = stabilising_threshold, colour = "red", size = 1, linetype = "dashed", alpha = 0.9)
+        + scale_x_continuous(
+            breaks=np.arange(0, 9999999, 1),
+            labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
+            expand=(0.01, 0.01))
+        + labs(
+            title = f"{pdb}",
+            y=r'$\mathbf{\Delta G^{\circ}\ per\ residue\ (kcal\cdot mol^{-1})}$',
+            x="Residue Number"
+        )
+        + theme_classic()
+        + theme(
+            panel_border = element_rect(color = "black", size = 1.5),
+            panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+            panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+            plot_title = element_text(size = 20, face = "bold", hjust = 0.5),
+            axis_title = element_text(size = 20, face = "bold"),
+            axis_text = element_text(size = 14, colour = "black"),
+        )
+    )
 
-#     p.save(os.path.join(single_pdb_path, f"{pdb}_stability.png"), height=6, width=12, dpi=300)
+    p.save(os.path.join(single_pdb_path, f"{pdb}_stability.png"), height=6, width=12, dpi=300)
 
 
 #############################################################################
@@ -284,12 +284,6 @@ correlation_matrix = columns_to_correlate.corr()
 # Saving pearson correlation
 correlation_matrix.to_csv(os.path.join(pearson_path, "Pearson_Scores.csv"))
 
-
-# # Convert correlation matrix to long-format DataFrame
-# correlation_df = correlation_matrix.stack().reset_index()
-# correlation_df.columns = ["Var1", "Var2", "Correlation"]
-
-
 # Convert correlation matrix to long (tidy) format
 correlation_long = correlation_matrix.reset_index().melt(
     id_vars='pdb_id', 
@@ -299,34 +293,34 @@ correlation_long = correlation_matrix.reset_index().melt(
 
 ### Plotting Pearson Correlation ###
 
-# # Heatmap
-# p = (
-#     ggplot(correlation_long, aes(x = "pdb_id", y = "pdb_id_2", fill = "correlation"))
-#     + geom_tile(size = 0.2, colour = "black")
-#     + scale_fill_gradientn(colors = ["blue", "white", "red"],
-#                        values=[0, 0.5, 1],
-#                        breaks = [-1,-0.5,0,0.5,1],
-#                        labels = [-1,-0.5,0,0.5,1],
-#                        limits = [-1,1]) 
-#     + labs(
-#         title = "Pearson Correlation between PDBs per residue FoldX stability",
-#         x = "",
-#         y = "",
-#         fill = "Pearson\nCorrelation"
-#     )
-#     + theme_minimal()
-#     + theme(
-#         plot_title = element_text(size = 18, face = "bold", colour = "black", ha = "center"),
-#         axis_text_y = element_text(size = 10, face = "bold", colour = "black"),
-#         axis_text_x = element_text(size = 10, face = "bold", colour = "black",
-#                                    angle = 90, vjust = 0.25, hjust = 1),
-#         axis_line = element_blank(),
-#         legend_title = element_text(size = 12, colour = "black", face = "bold"),
-#         legend_text = element_text(size = 10, colour = "black")
-#     )
-# )
-# # Saving Heatmap
-# p.save(os.path.join(pearson_path, "Pearson_heatmap.png"), height=11, width=13, dpi=300)
+# Heatmap
+p = (
+    ggplot(correlation_long, aes(x = "pdb_id", y = "pdb_id_2", fill = "correlation"))
+    + geom_tile(size = 0.2, colour = "black")
+    + scale_fill_gradientn(colors = ["blue", "white", "red"],
+                       values=[0, 0.5, 1],
+                       breaks = [-1,-0.5,0,0.5,1],
+                       labels = [-1,-0.5,0,0.5,1],
+                       limits = [-1,1]) 
+    + labs(
+        title = "Pearson Correlation between PDBs per residue FoldX stability",
+        x = "",
+        y = "",
+        fill = "Pearson\nCorrelation"
+    )
+    + theme_minimal()
+    + theme(
+        plot_title = element_text(size = 18, face = "bold", colour = "black", ha = "center"),
+        axis_text_y = element_text(size = 10, face = "bold", colour = "black"),
+        axis_text_x = element_text(size = 10, face = "bold", colour = "black",
+                                   angle = 90, vjust = 0.25, hjust = 1),
+        axis_line = element_blank(),
+        legend_title = element_text(size = 12, colour = "black", face = "bold"),
+        legend_text = element_text(size = 10, colour = "black")
+    )
+)
+# Saving Heatmap
+p.save(os.path.join(pearson_path, "Pearson_heatmap.png"), height=11, width=13, dpi=300)
 
 ### Boxplot ###
 
@@ -338,32 +332,32 @@ correlation_long = correlation_long[correlation_long['pdb_id'] != correlation_lo
 # Creating a dummy collumn
 correlation_long["dummy"] = "" 
 
-# p = (
-#     ggplot(correlation_long, aes(x = "dummy", y = "correlation"))
-#     + geom_violin(fill = "grey", size = 1, width = 0.5)
-#     + geom_boxplot(colour = "black", size = 1, width = 0.1, fill = None, outlier_size = 1)
-#     + labs(
-#         x = "",
-#         y = "Pearson Correlation",
-#     )
-#     + theme_classic()
-#     + theme(
-#         panel_border = element_rect(colour = "black", fill = None, size = 1.5),
-#         panel_grid_major = element_line(colour = "grey", size = 0.3, linetype = "dashed"),
-#         panel_grid_minor = element_line(colour = "grey", size = 0.3, linetype = "dashed"),
-#         axis_title = element_text(size = 20, face = "bold", colour = "black"),
-#         axis_text = element_text(size = 14, colour = "black")
-#     )
-# )
-# # Saving Heatmap
-# p.save(os.path.join(pearson_path, "Pearson_boxplot.png"), height=6, width=5, dpi=300)
+p = (
+    ggplot(correlation_long, aes(x = "dummy", y = "correlation"))
+    + geom_violin(fill = "grey", size = 1, width = 0.5)
+    + geom_boxplot(colour = "black", size = 1, width = 0.1, fill = None, outlier_size = 1)
+    + labs(
+        x = "",
+        y = "Pearson Correlation",
+    )
+    + theme_classic()
+    + theme(
+        panel_border = element_rect(colour = "black", fill = None, size = 1.5),
+        panel_grid_major = element_line(colour = "grey", size = 0.3, linetype = "dashed"),
+        panel_grid_minor = element_line(colour = "grey", size = 0.3, linetype = "dashed"),
+        axis_title = element_text(size = 20, face = "bold", colour = "black"),
+        axis_text = element_text(size = 14, colour = "black")
+    )
+)
+# Saving Heatmap
+p.save(os.path.join(pearson_path, "Pearson_boxplot.png"), height=6, width=5, dpi=300)
 
-# ### Saving Pearson correlation summary statistics ###
-# with open(os.path.join(pearson_path, "average_correlation.txt"), "w") as f:
-#     f.write("Average Pearson Correlation Score\n\n")
-#     f.write(f"Mean: {correlation_long['correlation'].mean(skipna=True)}\n")
-#     f.write(f"Median: {correlation_long['correlation'].median(skipna=True)}\n")
-#     f.write(f"SD: {correlation_long['correlation'].std(skipna=True)}\n")
+### Saving Pearson correlation summary statistics ###
+with open(os.path.join(pearson_path, "average_correlation.txt"), "w") as f:
+    f.write("Average Pearson Correlation Score\n\n")
+    f.write(f"Mean: {correlation_long['correlation'].mean(skipna=True)}\n")
+    f.write(f"Median: {correlation_long['correlation'].median(skipna=True)}\n")
+    f.write(f"SD: {correlation_long['correlation'].std(skipna=True)}\n")
 
 
 ####################################
@@ -414,28 +408,28 @@ long_df['interaction'] = (
 # Combine pdb_id and interaction to form a unique group identifier
 long_df['line_group'] = long_df['pdb_id'].astype(str) + '_' + long_df['interaction'].astype(str)
 
-# # Create the plot
-# p = (
-#     ggplot(long_df, aes(x='Pos', y='value'))
-#     + geom_line(aes(group = 'line_group'), size = 1, alpha = 0.25)
-#     + geom_hline(yintercept = 0, size = 0.5, linetype = 'dashed')
-#     + facet_wrap('~variable')
-#     + labs(
-#         y = r'$\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)',
-#         x = "Position"  
-#     )
-#     + theme_minimal()
-#     + theme(
-#         axis_line = element_blank(),
-#         strip_text = element_text(size = 14, face = "bold"),
-#         axis_title = element_text(size = 22, face = "bold", colour = "black"),
-#         axis_text = element_text(size = 14, colour = "black"),
-#         legend_position='none'
-#     )
-# )
+# Create the plot
+p = (
+    ggplot(long_df, aes(x='Pos', y='value'))
+    + geom_line(aes(group = 'line_group'), size = 1, alpha = 0.25)
+    + geom_hline(yintercept = 0, size = 0.5, linetype = 'dashed')
+    + facet_wrap('~variable')
+    + labs(
+        y = r'$\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)',
+        x = "Position"  
+    )
+    + theme_minimal()
+    + theme(
+        axis_line = element_blank(),
+        strip_text = element_text(size = 14, face = "bold"),
+        axis_title = element_text(size = 22, face = "bold", colour = "black"),
+        axis_text = element_text(size = 14, colour = "black"),
+        legend_position='none'
+    )
+)
 
-# # Saving plot
-# p.save(os.path.join(deltaG_analysis_path, "all_energies_separate_pdb.png"), height=12, width=15, dpi=300)
+# Saving plot
+p.save(os.path.join(deltaG_analysis_path, "all_energies_separate_pdb.png"), height=12, width=15, dpi=300)
 
 ###################################
 ### Characterizing Residue Type ### 
@@ -536,23 +530,23 @@ fill_colors = {
     "Positive": "crimson"
 }
 
-# # Plot stable counts
-# plot_residue_counts(
-#     residue_count_df,
-#     value_col="norm_stable_count",
-#     y_label="Stabilising Occurences / Total Occurences (%)",
-#     output_file=os.path.join(residue_analysis_path, "stabilising_residue_type_normalised.png"),
-#     fill_colors=fill_colors
-# )
+# Plot stable counts
+plot_residue_counts(
+    residue_count_df,
+    value_col="norm_stable_count",
+    y_label="Stabilising Occurences / Total Occurences (%)",
+    output_file=os.path.join(residue_analysis_path, "stabilising_residue_type_normalised.png"),
+    fill_colors=fill_colors
+)
 
-# # Plot destabilising counts
-# plot_residue_counts(
-#     residue_count_df,
-#     value_col="norm_destable_count",
-#     y_label="Destabilising Occurences / Total Occurences (%)",
-#     output_file=os.path.join(residue_analysis_path, "destabilising_residue_type_normalised.png"),
-#     fill_colors=fill_colors
-# )
+# Plot destabilising counts
+plot_residue_counts(
+    residue_count_df,
+    value_col="norm_destable_count",
+    y_label="Destabilising Occurences / Total Occurences (%)",
+    output_file=os.path.join(residue_analysis_path, "destabilising_residue_type_normalised.png"),
+    fill_colors=fill_colors
+)
 
 ### Plotting residue type and mean dG ###
 
@@ -565,30 +559,30 @@ res_type_df = (
 
 res_type_df = pd.merge(res_type_df, amino_acids, on = "Code")
 
-# # Line Plot
-# p = (
-#     ggplot(res_type_df, aes(x = "Pos", y = "mean_energy"))
-#     + geom_line(size = 0.75)
-#     + geom_point(aes(colour = "property"), size = 1.5)
-#     + labs(
-#         y = r'Mean $\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)',
-#         x = "Residue Number",
-#         colour = "Property"
-#     )
-#     + theme_classic()
-#     + theme(
-#         panel_border = element_rect(colour = "black", size = 1),
-#         panel_grid_major = element_line(colour = "grey", size = 0.25, linetype = "dashed"),
-#         panel_grid_minor = element_line(colour = "grey", size = 0.25, linetype = "dashed"),
-#         axis_title = element_text(size = 12, face = "bold"),
-#         axis_text = element_text(size = 10, colour = "black"),
-#         legend_title = element_text(size = 12, colour = "black", face = "bold"),
-#         legend_text = element_text(size = 10, colour = "black")
-#     )
-# )
+# Line Plot
+p = (
+    ggplot(res_type_df, aes(x = "Pos", y = "mean_energy"))
+    + geom_line(size = 0.75)
+    + geom_point(aes(colour = "property"), size = 1.5)
+    + labs(
+        y = r'Mean $\mathbf{\Delta G^{\circ}}$ per residue (kcal·mol$^{-1}$)',
+        x = "Residue Number",
+        colour = "Property"
+    )
+    + theme_classic()
+    + theme(
+        panel_border = element_rect(colour = "black", size = 1),
+        panel_grid_major = element_line(colour = "grey", size = 0.25, linetype = "dashed"),
+        panel_grid_minor = element_line(colour = "grey", size = 0.25, linetype = "dashed"),
+        axis_title = element_text(size = 12, face = "bold"),
+        axis_text = element_text(size = 10, colour = "black"),
+        legend_title = element_text(size = 12, colour = "black", face = "bold"),
+        legend_text = element_text(size = 10, colour = "black")
+    )
+)
 
-# # Saving Line plot
-# p.save(os.path.join(residue_analysis_path, "mean_dG_per_residue_all_PDBs.png"), height=4, width=10, dpi=300)
+# Saving Line plot
+p.save(os.path.join(residue_analysis_path, "mean_dG_per_residue_all_PDBs.png"), height=4, width=10, dpi=300)
 
 ####################################
 ### Sum deltaG per PDB analysis ###
@@ -620,24 +614,24 @@ rmsd_cluster_df = rmsd_cluster_df.sort_values(by='group').reset_index(drop=True)
 # Saving rmsd_cluster_df
 rmsd_cluster_df.to_csv(os.path.join(deltaG_comp_path, "sum_deltaG_per_PDB.csv"), index = False)
 
-# # Plotting sum_mean_energy for each RMSD cluster group
-# p = (
-#     ggplot(rmsd_cluster_df, aes(x = "group", y = "sum_mean_energy")) 
-#     + geom_boxplot(size = 0.75, colour = "black")
-#     + geom_point(size = 2.5)
-#     + labs(
-#         y = r'$\mathbf{\Delta G^{\circ}}$ per PDB (kcal·mol$^{-1}$)',
-#         x = "RMSD Cluster Group"
-#     )
-#     + theme_classic()
-#     + theme(panel_border = element_rect(colour = "black", size = 1.5),
-#         panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
-#         axis_text = element_text(size = 16, colour = "black", face = "bold"),
-#         axis_title = element_text(size = 18, face = "bold"))
-# )
+# Plotting sum_mean_energy for each RMSD cluster group
+p = (
+    ggplot(rmsd_cluster_df, aes(x = "group", y = "sum_mean_energy")) 
+    + geom_boxplot(size = 0.75, colour = "black")
+    + geom_point(size = 2.5)
+    + labs(
+        y = r'$\mathbf{\Delta G^{\circ}}$ per PDB (kcal·mol$^{-1}$)',
+        x = "RMSD Cluster Group"
+    )
+    + theme_classic()
+    + theme(panel_border = element_rect(colour = "black", size = 1.5),
+        panel_grid_major = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        panel_grid_minor = element_line(colour = "grey", size = 0.5, linetype = "dashed"),
+        axis_text = element_text(size = 16, colour = "black", face = "bold"),
+        axis_title = element_text(size = 18, face = "bold"))
+)
 
-# p.save(os.path.join(deltaG_comp_path, "sum_deltaG_per_PDB_by_RMSD_cluster.png"), height = 6, width = 8, dpi = 300)
+p.save(os.path.join(deltaG_comp_path, "sum_deltaG_per_PDB_by_RMSD_cluster.png"), height = 6, width = 8, dpi = 300)
 
 ### Comparing by fibril source ###
 
