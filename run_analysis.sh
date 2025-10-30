@@ -10,8 +10,8 @@ scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Sc
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
@@ -32,9 +32,14 @@ remove_poorly_resolved=1
 # Specify FoldX parameters - if not specified it will use the default [pH = 7.4, temp = 298K, ionstrength = 0.150]
 # The specified parameters will be applied to all structures
 # I plan to update this in the future to allow different parameters for each PDB to better capture the fibril formation conditions
-ph=NA
-temp=NA
-ionstrength=NA
+
+ph=NA                   # Use NA for default
+temp=NA                 # Use NA for default
+ionstrength=NA          # Use NA for default
+
+# Set window size for rolling average of FoldX data (3 is reccomended for most proteins)
+window=3
+min_stable_region_size=0
 
 #############################################################################################################################################
 #############################################################################################################################################
@@ -84,23 +89,23 @@ fi
 if [ $thermodynamics -eq 1 ]; then
 
    # Getting fibril twist and rise
-   #python Scripts/thermodynamics/EMDB_scraper.py 
+   python Scripts/thermodynamics/EMDB_scraper.py 
 
    # Extend the asymetric units to a layer depth of 10 chains
-   #python Scripts/thermodynamics/extend_fibril_layers.py
+   python Scripts/thermodynamics/extend_fibril_layers.py
 
    # Calculate the FoldX per residue stability
    python Scripts/thermodynamics/foldx_analysis.py $ph $temp $ionstrength
 
    # Plotting thermodynamic results
-   #python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved
+   python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved
 
 fi
 
 if [ $stable_regions -eq 1 ]; then
 
     # Defining Stable Regions
-    Rscript Scripts/stable_regions/defining_stable_regions.R
+    python Scripts/stable_regions/defining_stable_regions.py $window $min_stable_region_size
 
     # Calculate the Stable Region Distances
     Rscript Scripts/stable_regions/stable_region_distances.R
