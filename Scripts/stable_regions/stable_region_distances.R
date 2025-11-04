@@ -43,9 +43,8 @@ pdb_filenames <- sub("\\.pdb$", "", pdb_filenames)
 pdb_names <- sub("_.*", "", pdb_filenames)
 
 # Getting the list of high resolution PDBs
-high_resolution_PDBs <- read_delim(file.path("Output", "Validation", "high_resolution_pdb_ids.txt"), 
-                                   delim = "\t", escape_double = FALSE, 
-                                   trim_ws = TRUE)
+high_resolution_PDBs <- read_csv("Output/Validation/high_resolution_pdb_ids.csv")
+
 # Creating PDB column
 high_resolution_PDBs$pdb <- sub("_.*", "", high_resolution_PDBs$pdb_id)
 

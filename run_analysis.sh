@@ -32,14 +32,16 @@ remove_poorly_resolved=1
 # Specify FoldX parameters - if not specified it will use the default [pH = 7.4, temp = 298K, ionstrength = 0.150]
 # The specified parameters will be applied to all structures
 # I plan to update this in the future to allow different parameters for each PDB to better capture the fibril formation conditions
-
-ph=NA                   # Use NA for default
-temp=NA                 # Use NA for default
-ionstrength=NA          # Use NA for default
+ph=NA              
+temp=NA # Temperature in Kelvin                
+ionstrength=NA          
 
 # Set window size for rolling average of FoldX data (3 is reccomended for most proteins)
 window=3
 min_stable_region_size=0
+
+# Specify an intersheet distance threshold for stable region contacts (If not provided it will use the default of 10.8A)
+distance_threshold=NA
 
 #############################################################################################################################################
 #############################################################################################################################################
@@ -85,7 +87,6 @@ if [ $RMSD -eq 1 ]; then
 
 fi
 
-
 if [ $thermodynamics -eq 1 ]; then
 
    # Getting fibril twist and rise
@@ -108,8 +109,7 @@ if [ $stable_regions -eq 1 ]; then
     python Scripts/stable_regions/defining_stable_regions.py $window $min_stable_region_size
 
     # Calculate the Stable Region Distances
-    Rscript Scripts/stable_regions/stable_region_distances.R
-
+    python Scripts/stable_regions/stable_region_distances.py $distance_threshold
 fi
 
 if [ $beta_sheet -eq  1 ]; then
