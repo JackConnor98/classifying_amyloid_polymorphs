@@ -12,7 +12,7 @@ validation=0                    # 0 - Do not validate               | 1 - Run va
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_sheet=1                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+beta_strand=1                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
@@ -115,9 +115,9 @@ if [ $stable_regions -eq 1 ]; then
     python Scripts/stable_regions/stable_region_distances.py $distance_threshold
 fi
 
-if [ $beta_sheet -eq  1 ]; then
+if [ $beta_strand -eq  1 ]; then
     # Analyse B-sheets
-    python Scripts/beta_sheet/beta_sheet_analysis.py $min_length
+    python Scripts/beta_strand/beta_strand_analysis.py $min_length
 fi
 
 if [ $PNG -eq 1 ]; then
@@ -132,5 +132,5 @@ if [ $PNG -eq 1 ]; then
     # Creating a figure showing each structure with coloured stable regions and grouped by RMSD
     python Scripts/PNG/stable_region_png_maker.py
     python Scripts/PNG/cluster_group_and_stable_regions_figure.py
-    
+
 fi
