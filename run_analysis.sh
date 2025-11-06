@@ -11,8 +11,8 @@ PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analys
 validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_sheet=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+beta_sheet=1                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
@@ -42,6 +42,9 @@ min_stable_region_size=0
 
 # Specify an intersheet distance threshold for stable region contacts (If not provided it will use the default of 10.8A)
 distance_threshold=NA
+
+# Specify the minimum number of residues required to be considered a B-strand (default = 4)
+min_length=NA
 
 #############################################################################################################################################
 #############################################################################################################################################
@@ -114,7 +117,7 @@ fi
 
 if [ $beta_sheet -eq  1 ]; then
     # Analyse B-sheets
-    Rscript Scripts/beta_sheet/beta_sheet_analysis.R
+    python Scripts/beta_sheet/beta_sheet_analysis.py $min_length
 fi
 
 if [ $PNG -eq 1 ]; then
@@ -129,5 +132,5 @@ if [ $PNG -eq 1 ]; then
     # Creating a figure showing each structure with coloured stable regions and grouped by RMSD
     python Scripts/PNG/stable_region_png_maker.py
     python Scripts/PNG/cluster_group_and_stable_regions_figure.py
-
+    
 fi

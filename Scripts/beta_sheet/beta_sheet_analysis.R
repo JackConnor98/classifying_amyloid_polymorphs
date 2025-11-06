@@ -28,7 +28,7 @@ if(!dir.exists(file.path("Output", "b_sheets", "ramachandran_plots"))) dir.creat
 # Specifying range for B-sheet conformation
 # References: 
 # B-Turns and their distortions: a proposed new nomenclature - Figure 2
-# A fresh look at the Ramachandran plot and the occurrence of standard structures in proteins (used to find above paper)
+# A fresh look at the Ramachandran plot and the occurrence of standard structures in proteins
 psi_min = 60
 psi_max = 180
 psi_min_extended = -180
@@ -53,9 +53,8 @@ pdb_filenames <- sub("\\.pdb$", "", pdb_filenames)
 pdb_names <- sub("_.*", "", pdb_filenames)
 
 # Getting the list of high resolution PDBs
-high_resolution_PDBs <- read_delim(file.path("Output", "Validation", "high_resolution_pdb_ids.txt"), 
-                                   delim = "\t", escape_double = FALSE, 
-                                   trim_ws = TRUE)
+high_resolution_PDBs <- read.csv(file.path("Output", "Validation", "high_resolution_pdb_ids.csv"))
+
 # Creating PDB column
 high_resolution_PDBs$pdb <- sub("_.*", "", high_resolution_PDBs$pdb_id)
 
