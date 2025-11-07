@@ -34,12 +34,12 @@ if not os.path.exists(single_pdb_path):
 ############################################################################################
 
 # Importing metadata
-selected_pdbs_metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.txt"), sep="\t")
+selected_pdbs_metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 
 # Fixing names
 selected_pdbs_metadata = selected_pdbs_metadata.rename(columns={
     "PDB ID": "PDB",
-    "Resol- ution (Å)": "resolution"
+    "Resolution": "resolution"
 })
 
 # Selecting columns

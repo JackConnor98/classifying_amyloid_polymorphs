@@ -10,7 +10,7 @@ print("Running: plot_ordered_residues.py")
 # =============================================================================
 # Load and clean data
 # =============================================================================
-data = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.txt"), sep="\t")
+data = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 
 # Remove NMR structures
 data = data[data["Method"] != "ssNMR"]

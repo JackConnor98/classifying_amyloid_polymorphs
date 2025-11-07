@@ -133,31 +133,31 @@ for i, pdb_path in enumerate(pdb_files_filtered):
     all_torsion_data = pd.concat([all_torsion_data, torsion_df], ignore_index=True)
 
     # Plotting Ramachandran
-    # p = (
-    #     ggplot(torsion_df, aes(x = "phi", y = "psi"))
-    #     + geom_rect(xmin = phi_min, xmax = phi_max,
-    #                 ymin = psi_min, ymax = psi_max,
-    #                 fill = "skyblue", alpha = 0.01)
-    #     + geom_rect(xmin = phi_min, xmax = phi_max,
-    #                 ymin = psi_min_extended, ymax = psi_max_extended,
-    #                 fill = "skyblue", alpha = 0.01)
-    #     + geom_point(colour = "black", alpha = 0.5, size = 2)
-    #     + scale_x_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
-    #     + scale_y_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
-    #     + labs(
-    #         title = f"Ramachandran Plot - {pdb_name}",
-    #         x = "Phi (φ) Angles", 
-    #         y = "Psi (ψ) Angles")
-    #     + theme_bw()
-    #     + theme(
-    #         panel_grid_major = element_line(colour = "grey", size = 0.5),
-    #         plot_title = element_text(size = 20, colour = "black", face = "bold", hjust = 0.5),
-    #         axis_title = element_text(size = 16, colour = "black", face = "bold"),
-    #         axis_text = element_text(size = 12, colour = "black")
-    #     )
-    # )
+    p = (
+        ggplot(torsion_df, aes(x = "phi", y = "psi"))
+        + geom_rect(xmin = phi_min, xmax = phi_max,
+                    ymin = psi_min, ymax = psi_max,
+                    fill = "skyblue", alpha = 0.01)
+        + geom_rect(xmin = phi_min, xmax = phi_max,
+                    ymin = psi_min_extended, ymax = psi_max_extended,
+                    fill = "skyblue", alpha = 0.01)
+        + geom_point(colour = "black", alpha = 0.5, size = 2)
+        + scale_x_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
+        + scale_y_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
+        + labs(
+            title = f"Ramachandran Plot - {pdb_name}",
+            x = "Phi (φ) Angles", 
+            y = "Psi (ψ) Angles")
+        + theme_bw()
+        + theme(
+            panel_grid_major = element_line(colour = "grey", size = 0.5),
+            plot_title = element_text(size = 20, colour = "black", face = "bold", hjust = 0.5),
+            axis_title = element_text(size = 16, colour = "black", face = "bold"),
+            axis_text = element_text(size = 12, colour = "black")
+        )
+    )
 
-    # p.save(os.path.join(ramachandran_dir, f"{pdb_name}.png"), height = 8, width = 8)
+    p.save(os.path.join(ramachandran_dir, f"{pdb_name}.png"), height = 8, width = 8)
 
     # --- Filter residues by torsion angles ---
     b_strands = torsion_df[
@@ -178,30 +178,30 @@ b_strand_data.to_csv(os.path.join(output_dir, "b_strands.csv"), index = False)
 ### Ramachandran Plot for all PDBs combined ###
 ###############################################
 
-# p = (
-#     ggplot(all_torsion_data, aes(x = "phi", y = "psi"))
-#     + geom_rect(xmin = phi_min, xmax = phi_max,
-#                 ymin = psi_min, ymax = psi_max,
-#                 fill = "skyblue", alpha = 0.01)
-#     + geom_rect(xmin = phi_min, xmax = phi_max,
-#                 ymin = psi_min_extended, ymax = psi_max_extended,
-#                 fill = "skyblue", alpha = 0.01)
-#     + geom_point(colour = "black", alpha = 0.5, size = 2)
-#     + scale_x_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
-#     + scale_y_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
-#     + labs(
-#         x = "Phi (φ) Angles", 
-#         y = "Psi (ψ) Angles")
-#     + theme_bw()
-#     + theme(
-#         panel_grid_major = element_line(colour = "grey", size = 0.5),
-#         plot_title = element_text(size = 20, colour = "black", face = "bold", hjust = 0.5),
-#         axis_title = element_text(size = 16, colour = "black", face = "bold"),
-#         axis_text = element_text(size = 12, colour = "black")
-#     )
-# )
+p = (
+    ggplot(all_torsion_data, aes(x = "phi", y = "psi"))
+    + geom_rect(xmin = phi_min, xmax = phi_max,
+                ymin = psi_min, ymax = psi_max,
+                fill = "skyblue", alpha = 0.01)
+    + geom_rect(xmin = phi_min, xmax = phi_max,
+                ymin = psi_min_extended, ymax = psi_max_extended,
+                fill = "skyblue", alpha = 0.01)
+    + geom_point(colour = "black", alpha = 0.5, size = 2)
+    + scale_x_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
+    + scale_y_continuous(breaks = range(-180, 181, 30), limits = [-180, 180], expand = [0, 0])
+    + labs(
+        x = "Phi (φ) Angles", 
+        y = "Psi (ψ) Angles")
+    + theme_bw()
+    + theme(
+        panel_grid_major = element_line(colour = "grey", size = 0.5),
+        plot_title = element_text(size = 20, colour = "black", face = "bold", hjust = 0.5),
+        axis_title = element_text(size = 16, colour = "black", face = "bold"),
+        axis_text = element_text(size = 12, colour = "black")
+    )
+)
 
-# p.save(os.path.join(output_dir, f"all_pdbs_ramachandran.png"), height = 8, width = 8)
+p.save(os.path.join(output_dir, f"all_pdbs_ramachandran.png"), height = 8, width = 8)
 
 ##########################################################
 ### Identifying B-sheets longer than a given threshold ###

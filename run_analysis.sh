@@ -2,18 +2,16 @@
 
 # TODO
 # Calculate intersheet spacing
-# Make a gui for amyloid atlas scraping where you can click to select/deselect certain entries
-
 
 # Setting Run Parameters
-scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
+PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+validation=1                    # 0 - Do not validate               | 1 - Run validation
+RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_strand=1                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
-PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
+PNG=1                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
 ### Optional settings ###
@@ -46,6 +44,17 @@ distance_threshold=NA
 # Specify the minimum number of residues required to be considered a B-strand (default = 4)
 min_length=NA
 
+# Specify how you want the PNGs of fibril units to be coloured
+# 0 = Single Colour
+# 1 = Protein Domain
+# 2 = Protofilament
+# 3 = Amyloid Fold
+png_colouring=0
+# If you selected Single Colour (0) please provide a colour to use (PyMol colour names)
+selected_colour="tv_blue"
+# If you selected Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
+png_palette="tv_blue, tv_red, tv_green, tv_orange"
+
 #############################################################################################################################################
 #############################################################################################################################################
 #############################################################################################################################################
@@ -53,7 +62,7 @@ min_length=NA
 
 if [ $scrape -eq  1 ]; then
     # Web scraping Amyloid Atlas
-    python Scripts/scrape/amyloid_atlas_scraper.py
+    python Scripts/scrape/amyloid_atlas_scraper_gui.py
 
     # Plotting the residues ordered in the fibril core
     python Scripts/scrape/plot_ordered_residues.py
@@ -123,7 +132,7 @@ fi
 if [ $PNG -eq 1 ]; then
 
     # Asymmetric Unit Figure
-    python Scripts/PNG/asymmetric_unit_png_generator.py
+    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $selected_colour $png_palette
     python Scripts/PNG/asymmetric_unit_figure_maker.py
 
     # Colouring asymetric units by stable regions
@@ -132,5 +141,8 @@ if [ $PNG -eq 1 ]; then
     # Creating a figure showing each structure with coloured stable regions and grouped by RMSD
     python Scripts/PNG/stable_region_png_maker.py
     python Scripts/PNG/cluster_group_and_stable_regions_figure.py
+
+    # Scrapint the polarity maps from Amyloid Atlas
+    python Scripts/PNG/polarity_map_scraper.py
 
 fi

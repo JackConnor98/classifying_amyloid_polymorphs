@@ -469,6 +469,10 @@ for pdb in pdb_names:
 
         distance_threshold = mean_distance + (mean_distance * 0.5)
 
+    else:
+        # No distances to calculate because there's only one chain
+        current_min_distance = pd.DataFrame(columns=['PDB','chain_1','chain_2','distance'])
+
     # Single layer of 2 protofilaments can have very large mean resulting in recognising only one fibril
     if num_chains == 2:
         distance_threshold = 8
@@ -616,18 +620,18 @@ for pdb in pdb_names:
         for fibril in distinct_fibrils:
             selected_chain = select_chain_with_lowest_z_com(fibril)
             selected_chains.append(selected_chain)
-    else:
-        # If no completely distinct fibrils, handle pairs with similar Rg values
-        processed_fibrils = set()
-        for fibril, similar_fibrils in similar_pairs:
-            if fibril not in processed_fibrils:
-                processed_fibrils.add(fibril)
-                for similar_fibril in similar_fibrils:
-                    processed_fibrils.add(similar_fibril)
-                # Select one chain with the lowest z_com from this group of similar fibrils
-                similar_group = [fibril] + similar_fibrils
-                selected_chain = select_chain_with_lowest_z_com(similar_group[0])  # Choose the first one as the representative
-                selected_chains.append(selected_chain)
+    # else:
+    #     # If no completely distinct fibrils, handle pairs with similar Rg values
+    #     processed_fibrils = set()
+    #     for fibril, similar_fibrils in similar_pairs:
+    #         if fibril not in processed_fibrils:
+    #             processed_fibrils.add(fibril)
+    #             for similar_fibril in similar_fibrils:
+    #                 processed_fibrils.add(similar_fibril)
+    #             # Select one chain with the lowest z_com from this group of similar fibrils
+    #             similar_group = [fibril] + similar_fibrils
+    #             selected_chain = select_chain_with_lowest_z_com(similar_group[0])  # Choose the first one as the representative
+    #             selected_chains.append(selected_chain)
 
     # Save the final selected chains, ensuring at least one is saved
     if not selected_chains:
@@ -668,8 +672,9 @@ for pdb in pdb_names:
     # Append current DataFrames to the initialized ones
     com_and_fibril_df = pd.concat([com_and_fibril_df, current_pdb_df], ignore_index=True)
     com_distances_df = pd.concat([com_distances_df, current_distance_df], ignore_index=True)
-    min_distance_df = pd.concat([min_distance_df, current_min_distance], ignore_index=True)
-
+    if not current_min_distance.empty:
+        min_distance_df = pd.concat([min_distance_df, current_min_distance], ignore_index=True)
+    
     ###################
     ### Cleaning up ###
     ###################

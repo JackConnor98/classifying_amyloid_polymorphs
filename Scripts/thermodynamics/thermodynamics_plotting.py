@@ -37,7 +37,7 @@ if not os.path.exists(deltaG_comp_path):
 
 ### Importing data ###
 df = pd.read_csv(os.path.join(thermo_path, "foldx_stability.csv"))
-metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.txt"), sep="\t")
+metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 chain_fibril = pd.read_csv(os.path.join("Output", "PDBs", "fibrils_extended", "chain_fibril.csv"))
 exterior_chains = pd.read_csv(os.path.join("Output", "PDBs", "fibrils_extended", "exterior_chains.csv"))
 com_and_fibril = pd.read_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"))
@@ -636,7 +636,7 @@ p.save(os.path.join(deltaG_comp_path, "sum_deltaG_per_PDB_by_RMSD_cluster.png"),
 ### Comparing by fibril source ###
 
 # Reimporting metadata
-metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.txt"), sep="\t")
+metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 
 # Rename column
 metadata = metadata.rename(columns={"PDB ID": "PDB"})

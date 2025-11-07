@@ -34,6 +34,7 @@ For more information please see the associated paper: https://doi.org/10.1016/j.
 ### FoldX
 Ensure FoldX is installed on your system and add 'export FOLDX_BINARY=/your/path/to/foldx.exe' to your .bashrc file.
 For more information, follow the instuctions given by PyFoldx: https://github.com/leandroradusky/pyfoldx.
+
 Important note - Under the academic licence, the FoldX license agreement ends on the 31st December of each year. To continue using FoldX the FoldX.exe needs to be redownloaded and added to your path as described in PyFoldX's installation.
 
 ### Conda Virtual Environment
@@ -42,7 +43,7 @@ conda activate calypso
 conda install -c conda-forge pymol-open-source bioconda muscle
 
 ### Python Packages
-pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2
+pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2 networkx
 
 ## Running the analysis
 The analysis pipeline is using the script run_analysis.sh. In this script, you can change the run parameters as desired.
