@@ -16,8 +16,19 @@ single_pdb_dir = os.path.join(output_dir, "single_reference")
 if not os.path.exists(single_pdb_dir):
     os.mkdir(single_pdb_dir)
 
-# Reading in command line arguments
-custom_cut_height = sys.argv[1]
+### Reading in command line arguments ###
+
+if len(sys.argv) > 1: 
+    try: 
+        custom_cut_height = int(sys.argv[1]) 
+        print(f"Cut Height: {custom_cut_height}") 
+    except ValueError: 
+        print("Warning: invalid cut height provided — defaulting to mean Euclidean distance") 
+        custom_cut_height = 0 
+else: 
+    custom_cut_height = 0 
+    print("No cut height provided, defaulting to mean Euclidean distance")
+
 
 # Importing data
 df = pd.read_csv(os.path.join(data_path, "pairwise_rmsd.csv"), sep=",")

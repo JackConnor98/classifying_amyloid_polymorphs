@@ -8,6 +8,16 @@ from plotnine import *
 # Read command line arguments
 remove_poorly_resolved = int(sys.argv[1])
 
+if len(sys.argv) > 1: 
+    try: 
+        remove_poorly_resolved = int(sys.argv[1]) 
+    except ValueError: 
+        print("Warning: invalid argument — defaulting to REMOVE poorly resolved residues") 
+        remove_poorly_resolved = 1 
+else: 
+    remove_poorly_resolved = 1 
+    print("No input given, defaulting to REMOVE poorly resolved residues")
+
 ################################################################################
 
 # Creating file paths and directories

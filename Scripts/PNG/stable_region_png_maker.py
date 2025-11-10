@@ -3,6 +3,9 @@ from pymol import cmd
 import os 
 import pandas as pd
 from itertools import cycle
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import numpy as np
 
 #############################################################################################################################
 
@@ -34,21 +37,32 @@ stable_regions = df.iloc[:, 0].tolist()
 
 print(f"\n Stable Regions: {stable_regions}")
 
-# Defining colours
-colours_list = [
-    "red", "blue", "gold", "br4", 
-    "orange", "cyan", "green", "pink", "brown",
-    "forest", "magenta", "deepteal", "br3", "salmon", 
-    "grey"]
+# Load the qualitative palettes
+set1 = plt.get_cmap("Set1")
+dark2 = plt.get_cmap("Dark2")
 
-colours = [color for _, color in zip(stable_regions, cycle(colours_list))]
+# Convert to hex
+set1_colours = [mcolors.to_hex(set1(i)) for i in range(set1.N)]
+dark2_colours = [mcolors.to_hex(dark2(i)) for i in range(dark2.N)]
+
+# Combine them
+base_colours = set1_colours + dark2_colours
+
+# Expand to match number of stable regions
+region_colours = np.tile(base_colours, int(np.ceil(len(stable_regions) / len(base_colours))))[:len(stable_regions)]
+
+# Register colours in PyMOL
+for idx, hex_colour in enumerate(region_colours):
+    rgb = mcolors.to_rgb(hex_colour)
+    cmd.set_color(f"region_colour_{idx}", rgb)
+
 
 # Set PyMOL to run without GUI
 pymol.pymol_argv = ['pymol', '-qc']
 pymol.finish_launching()
 
 # Load a reference structure (just take the first one, for example)
-reference_path = os.path.join(pdb_path, pdb_files[30])
+reference_path = os.path.join(pdb_path, pdb_files[0])
 
 for i in pdb_files:
 
@@ -77,10 +91,13 @@ for i in pdb_files:
     # Set the cartoon loop radius
     cmd.set("cartoon_loop_radius", 1)
 
+    # Removing dashed lines between disconnected residues
+    cmd.set("cartoon_gap_cutoff", 0)
+
     # Iterate over each region and color it
-    for j, region in enumerate(stable_regions):
-        colour = colours[j % len(colours)]  # Cycle through colours
-        cmd.color(colour, f"{object_name} and resi {region}")  # Apply the color
+    for j, row in df.iterrows():
+        region_range = row["residues"] # Getting the residues in the current stable region
+        cmd.color(f"region_colour_{j}", f"{object_name} and resi {region_range}")
 
     # Set the background color to transparent
     cmd.bg_color("white")  # Set to white to make sure transparency works
@@ -208,10 +225,13 @@ for i in pdb_files:
             # Set the cartoon loop radius
             cmd.set("cartoon_loop_radius", 1)
 
+            # Removing dashed lines between disconnected residues
+            cmd.set("cartoon_gap_cutoff", 0)
+
             # Iterate over each region and color it
-            for j, region in enumerate(stable_regions):
-                colour = colours[j % len(colours)]  # Cycle through colours
-                cmd.color(colour, f"{object_name} and resi {region}")  # Apply the color
+            for j, row in df.iterrows():
+                region_range = row["residues"] # Getting the residues in the current stable region
+                cmd.color(f"region_colour_{j}", f"{object_name} and resi {region_range}")
 
             # Set the background color to transparent
             cmd.bg_color("white")  # Set to white to make sure transparency works
@@ -252,10 +272,13 @@ for i in pdb_files:
         # Set the cartoon loop radius
         cmd.set("cartoon_loop_radius", 1)
 
+        # Removing dashed lines between disconnected residues
+        cmd.set("cartoon_gap_cutoff", 0)
+
         # Iterate over each region and color it
-        for j, region in enumerate(stable_regions):
-            colour = colours[j % len(colours)]  # Cycle through colours
-            cmd.color(colour, f"{object_name} and resi {region}")  # Apply the color
+        for j, row in df.iterrows():
+            region_range = row["residues"] # Getting the residues in the current stable region
+            cmd.color(f"region_colour_{j}", f"{object_name} and resi {region_range}")
 
         # Set the background color to transparent
         cmd.bg_color("white")  # Set to white to make sure transparency works

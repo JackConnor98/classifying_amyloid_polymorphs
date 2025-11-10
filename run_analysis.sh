@@ -17,6 +17,9 @@ PNG=1                           # 0 - Do not generate PNGs          | 1 - Genera
 ### Optional settings ###
 #########################
 
+# Web scraping: would you like to use the GUI (1) or command line (0) version
+scrape_version=1
+
 # Would you like to add a penalty to non-overlapping residues in the RMSD calculation?
 penalty=0                     # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
 
@@ -50,9 +53,7 @@ min_length=NA
 # 2 = Protofilament
 # 3 = Amyloid Fold
 png_colouring=0
-# If you selected Single Colour (0) please provide a colour to use (PyMol colour names)
-selected_colour="tv_blue"
-# If you selected Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
+# If you selected Single Colour (0) Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
 png_palette="tv_blue, tv_red, tv_green, tv_orange"
 
 #############################################################################################################################################
@@ -61,8 +62,13 @@ png_palette="tv_blue, tv_red, tv_green, tv_orange"
 #############################################################################################################################################
 
 if [ $scrape -eq  1 ]; then
+
     # Web scraping Amyloid Atlas
-    python Scripts/scrape/amyloid_atlas_scraper_gui.py
+    if [ $scrape_version -eq 1 ]; then
+        python Scripts/scrape/amyloid_atlas_scraper_gui.py
+    else
+        python Scripts/scrape/amyloid_atlas_scraper.py
+    fi
 
     # Plotting the residues ordered in the fibril core
     python Scripts/scrape/plot_ordered_residues.py
@@ -132,7 +138,7 @@ fi
 if [ $PNG -eq 1 ]; then
 
     # Asymmetric Unit Figure
-    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $selected_colour $png_palette
+    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $png_palette
     python Scripts/PNG/asymmetric_unit_figure_maker.py
 
     # Colouring asymetric units by stable regions

@@ -25,13 +25,9 @@ if len(sys.argv) > 1:
 else: 
     png_colouring = 0 
     print("No value for png_colouring provided, defaulting to 0")
-
-if png_colouring == 0: 
-    selected_colour = sys.argv[2]
-    print(f"Selected colour = {selected_colour}")
     
-if len(sys.argv) > 3:
-    png_palette = sys.argv[3]
+if len(sys.argv) > 2:
+    png_palette = sys.argv[2]
     # Parse the comma-separated list into a Python list
     user_palette = [c.strip() for c in png_palette.split(",") if c.strip()]
 else:
@@ -69,7 +65,7 @@ def validate_colour(colour):
 
 if png_colouring == 0:
     # Checking if colour provided is valid
-    selected_colour_valid = validate_colour(selected_colour)
+    selected_colour_valid = validate_colour(user_palette[0])
 
     def color_residues():
         cmd.color(selected_colour_valid)
@@ -198,6 +194,9 @@ for i in pdb_files:
 
     # Set the cartoon loop radius
     cmd.set("cartoon_loop_radius", 1)
+
+    # Removing dashed lines between disconnected residues
+    cmd.set("cartoon_gap_cutoff", 0)
 
     # Set all residues to white
     color_white()

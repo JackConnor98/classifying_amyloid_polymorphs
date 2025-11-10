@@ -27,7 +27,7 @@ df = pd.read_csv(os.path.join("Output", "stable_regions", "stable_regions.csv"))
 # Extract the first column
 stable_regions = df.iloc[:, 0].tolist()
 
-print(f"\n Stable Regions: {stable_regions}")
+#print(f"\n Stable Regions: {stable_regions}")
 
 # Defining colours
 colours_list = [

@@ -43,10 +43,11 @@ conda activate calypso
 conda install -c conda-forge pymol-open-source bioconda muscle
 
 ### Python Packages
-pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2 networkx
+pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2 networkx tkinter customtkinter
 
 ## Running the analysis
-The analysis pipeline is using the script run_analysis.sh. In this script, you can change the run parameters as desired.
+The analysis can be run from a GUI by running calypso.py where you can adjust run parameters.
+Alternatively the analysis can be ran without a GUI using run_analyis.sh. In this script you can change the run parameters as desired.
 
 
 
