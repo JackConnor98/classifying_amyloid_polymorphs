@@ -50,9 +50,7 @@ min_length=NA
 # 2 = Protofilament
 # 3 = Amyloid Fold
 png_colouring=0
-# If you selected Single Colour (0) please provide a colour to use (PyMol colour names)
-selected_colour="tv_blue"
-# If you selected Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
+# If you selected Single Colour (0) Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
 png_palette="tv_blue, tv_red, tv_green, tv_orange"
 
 #############################################################################################################################################
@@ -132,7 +130,7 @@ fi
 if [ $PNG -eq 1 ]; then
 
     # Asymmetric Unit Figure
-    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $selected_colour $png_palette
+    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $png_palette
     python Scripts/PNG/asymmetric_unit_figure_maker.py
 
     # Colouring asymetric units by stable regions

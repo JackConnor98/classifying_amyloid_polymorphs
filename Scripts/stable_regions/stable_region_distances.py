@@ -330,16 +330,19 @@ stable_dist_by_cluster["min_distance"] = stable_dist_by_cluster["min_distance"].
 stable_dist_by_cluster["region1"] = stable_dist_by_cluster["region1"].astype(int)
 stable_dist_by_cluster["region2"] = stable_dist_by_cluster["region2"].astype(int)
 
-# Using matplotlib colour palette tab20
-n_regions = 20
-cmap = plt.get_cmap("tab20")  # qualitative palette
-# get first n_regions colours
-colours = [cmap(i) for i in range(n_regions)]
-# convert to hex
-colours = [mcolors.to_hex(c) for c in colours]
+# Load the qualitative palettes
+set1 = plt.get_cmap("Set1")
+dark2 = plt.get_cmap("Dark2")
 
-# Extend the color vector to match the length of `region` if needed
-region_colours = np.tile(colours, int(np.ceil(len(stable_regions) / len(colours))))[:len(stable_regions)]
+# Convert to hex
+set1_colours = [mcolors.to_hex(set1(i)) for i in range(set1.N)]
+dark2_colours = [mcolors.to_hex(dark2(i)) for i in range(dark2.N)]
+
+# Combine them
+base_colours = set1_colours + dark2_colours
+
+# Expand to match number of stable regions
+region_colours = np.tile(base_colours, int(np.ceil(len(stable_regions) / len(base_colours))))[:len(stable_regions)]
 
 for group in np.unique(stable_dist_by_cluster["group"]):
 

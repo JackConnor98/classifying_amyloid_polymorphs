@@ -189,16 +189,19 @@ stable_regions["region"] = pd.Categorical(
 stable_regions_minimal = stable_regions[["region", "residues"]]
 stable_regions_minimal.to_csv(os.path.join(output_dir, "stable_regions.csv"), index = False)
 
-# Using matplotlib colour palette tab20
-n_regions = 20
-cmap = plt.get_cmap("tab20")  # qualitative palette
-# get first n_regions colours
-colours = [cmap(i) for i in range(n_regions)]
-# convert to hex
-colours = [mcolors.to_hex(c) for c in colours]
+# Load the qualitative palettes
+set1 = plt.get_cmap("Set1")
+dark2 = plt.get_cmap("Dark2")
 
-# Extend the color vector to match the length of `region` if needed
-region_colours = np.tile(colours, int(np.ceil(len(stable_regions) / len(colours))))[:len(stable_regions)]
+# Convert to hex
+set1_colours = [mcolors.to_hex(set1(i)) for i in range(set1.N)]
+dark2_colours = [mcolors.to_hex(dark2(i)) for i in range(dark2.N)]
+
+# Combine them
+base_colours = set1_colours + dark2_colours
+
+# Expand to match number of stable regions
+region_colours = np.tile(base_colours, int(np.ceil(len(stable_regions) / len(base_colours))))[:len(stable_regions)]
 
 # Creating a new column to adjust the width of the rectangles in the plot
 stable_regions["min_adj"] = stable_regions["min"] - 0.5
