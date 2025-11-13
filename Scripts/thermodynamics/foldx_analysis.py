@@ -64,8 +64,7 @@ combined_residue_energy = pd.DataFrame()
 for pdb in pdb_files:
 
     # Extract the pdb_id
-    pdb_id = pdb.split('.')[0]
-    pdb_id = pdb_id.split("/")[-1]
+    pdb_id = os.path.splitext(os.path.basename(pdb))[0]
 
     # Split the string after the last "_"
     pdb_code = re.split(r'_(?!.*_)', pdb_id)[0]
@@ -122,5 +121,9 @@ for pdb in pdb_files:
 combined_residue_energy.to_csv(os.path.join("Output", "thermodynamics", "foldx_stability.csv"), index=False)
 
 # Deleting temporary .foldx folder
-if os.path.exists(".foldx"):
-    shutil.rmtree(".foldx")
+for folder in os.listdir("."):
+    if folder.startswith(".foldx") and os.path.isdir(folder):
+        try:
+            shutil.rmtree(folder)
+        except OSError:
+            pass

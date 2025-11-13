@@ -28,7 +28,8 @@ def run_pipeline():
     stable_regions = stable_regions_var.get()
     b_strand = b_strand_var.get()
     png = png_var.get()
-
+    
+    use_local = safe(use_local_var.get(), "0")
     q_score_threshold= safe(q_score_threshold_var.get(), "automatic")
     penalty = safe(penalty_var.get(), "0")
     custom_cut_height = safe(custom_cut_height_var.get(), "0")
@@ -36,6 +37,7 @@ def run_pipeline():
     ph = safe(ph_var.get(), "7.4")
     temp = safe(temp_var.get(), "298")
     ionstrength = safe(ion_var.get(), "0.15")
+    num_processes = safe(num_processes_var.get(), 4)
     window = safe(window_var.get(), "3")
     min_stable = safe(min_stable_region_size_var.get(), "0")
     distance_threshold = safe(distance_threshold_var.get(), "10.8")
@@ -46,18 +48,18 @@ def run_pipeline():
     try:
         if scrape == 1:
             subprocess.run(["python", "Scripts/scrape/amyloid_atlas_scraper_gui.py"], check = True)
-            subprocess.run(["python", "Scripts/scrape/plot_ordered_residues.py"], check = True)
+            subprocess.run(["python", "Scripts/scrape/plot_ordered_residues.py", use_local], check = True)
             selected_jobs.append("1.Web Scrape")
 
         if pdb == 1:
-            subprocess.run(["python", "Scripts/PDB/fetch_pdb_isolate_chains.py"], check = True)
+            subprocess.run(["python", "Scripts/PDB/fetch_pdb_isolate_chains.py", use_local], check = True)
             subprocess.run(["python", "Scripts/PDB/Rg_plotting.py"], check = True)
             subprocess.run(["python", "Scripts/PDB/sequence_alignment.py"], check = True)
             selected_jobs.append("2.Analyse PDBs")
 
         if validation == 1:
             subprocess.run(["python", "Scripts/validation/Q_score_scraper.py"], check = True)
-            subprocess.run(["python", "Scripts/validation/validating_structures.py", q_score_threshold], check = True)
+            subprocess.run(["python", "Scripts/validation/validating_structures.py", q_score_threshold, use_local], check = True)
             selected_jobs.append("3.Validation")
 
         if rmsd == 1:
@@ -70,10 +72,11 @@ def run_pipeline():
             subprocess.run(["python", "Scripts/thermodynamics/extend_fibril_layers.py"], check = True)
             subprocess.run([
                 "python",
-                "Scripts/thermodynamics/foldx_analysis.py",
+                "Scripts/thermodynamics/foldx_analysis_multithread.py",
                 ph,
                 temp,
-                ionstrength
+                ionstrength,
+                num_processes
             ], check = True)
             subprocess.run(["python", "Scripts/thermodynamics/thermodynamics_plotting.py", remove_poorly_resolved], check = True)
             selected_jobs.append("5.Thermodynamics")
@@ -175,13 +178,26 @@ def make_button(parent, text, command, size = 20, weight = "bold", height = 40, 
     return button
 
 # -----------------------------------------------------------
+# 0. Local PDBs Handler
+# -----------------------------------------------------------
+local_frame = section("0. Local PDBs Handler")
+
+use_local_var = ctk.IntVar(value = 1)
+
+make_label_new_line(local_frame, "Would you like to use Local PDBs?")
+
+radio_frame = ctk.CTkFrame(local_frame)
+radio_frame.pack(anchor = "w", pady = 2)
+make_radiobutton(radio_frame, "Yes", use_local_var, value = 1)
+make_radiobutton(radio_frame, "No", use_local_var, value = 0)
+
+# -----------------------------------------------------------
 # 1. Web scrape
 # -----------------------------------------------------------
 
 scrape_frame = section("1. Web Scrape PDB Names From Amyloid Atlas")
 scrape_var = ctk.IntVar(value = 1)
 make_checkbox(scrape_frame, "Run web scraping", scrape_var)
-
 
 # -----------------------------------------------------------
 # 2. Analyse PDBs
@@ -237,14 +253,11 @@ make_checkbox(thermo_frame, "Run thermodynamic analysis (FoldX)", thermodynamics
 
 remove_poorly_resolved_var = ctk.IntVar(value = 1)
 
-make_label_new_line(thermo_frame, "Remove individual poorly resolved residues from otherwise well resolved PDBs?")
-
-remove_poorly_resolved_var = ctk.StringVar(value = "Yes")  # default choice
-
 radio_frame = ctk.CTkFrame(thermo_frame)
 radio_frame.pack(anchor = "w", pady = 2)
-make_radiobutton(radio_frame, "Yes", remove_poorly_resolved_var, value = "Yes")
-make_radiobutton(radio_frame, "No", remove_poorly_resolved_var, value = "No")
+make_label_new_line(thermo_frame, "Remove individual poorly resolved residues from otherwise well resolved PDBs?")
+make_radiobutton(radio_frame, "Yes", remove_poorly_resolved_var, value = 1)
+make_radiobutton(radio_frame, "No", remove_poorly_resolved_var, value = 0)
 
 ph_var = ctk.StringVar(value = "7.4")
 temp_var = ctk.StringVar(value = "298")
@@ -263,6 +276,14 @@ for label_text, var in [
     make_label(grid, label_text)
     make_entry(grid, var, width = 80, side = "left")
     
+
+procs_frame = ctk.CTkFrame(thermo_frame)
+procs_frame.pack(anchor = "w", pady = 2)
+num_processes_var = ctk.IntVar(value = 4)
+    
+make_label_new_line(procs_frame, "Specify a number of parallel process to be used for side chain relaxation")
+make_entry(procs_frame, num_processes_var, width = 50)
+
 # -----------------------------------------------------------
 # 6. Stable regions
 # -----------------------------------------------------------

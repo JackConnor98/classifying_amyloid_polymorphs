@@ -2,11 +2,12 @@
 
 # TODO
 # Calculate intersheet spacing
-# Add support for local PDB structures
+# Add support for local PDB structures past RMSD
+# Speed up repairing structures
 
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
@@ -17,6 +18,9 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 #########################
 ### Optional settings ###
 #########################
+
+# Would you like to use Local PDBs?
+use_local=1                    # 0 = No | 1 = Yes
 
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1
@@ -40,6 +44,9 @@ remove_poorly_resolved=1
 ph=NA              
 temp=NA # Temperature in Kelvin                
 ionstrength=NA          
+
+# Specify a number of parallel process to be used for side chain relaxation (Bottleneck of the analysis is FoldX's RepairPDB)
+num_processes=4
 
 # Set window size for rolling average of FoldX data (3 is reccomended for most proteins)
 window=3
@@ -73,14 +80,13 @@ if [ $scrape -eq  1 ]; then
     else
         python Scripts/scrape/amyloid_atlas_scraper.py
     fi
-
     # Plotting the residues ordered in the fibril core
-    python Scripts/scrape/plot_ordered_residues.py
+    python Scripts/scrape/plot_ordered_residues.py $use_local
 fi
 
 if [ $PDB -eq 1 ]; then
     # Fetch pdbs to get .cif files
-    python Scripts/PDB/fetch_pdb_isolate_chains.py
+    python Scripts/PDB/fetch_pdb_isolate_chains.py $use_local
 
     # Calculating the maximum Rg within a PDB
     python Scripts/PDB/Rg_plotting.py
@@ -95,7 +101,7 @@ if [ $validation -eq 1 ]; then
     python Scripts/validation/Q_score_scraper.py
 
     # Selecting good resolution structures
-    python Scripts/validation/validating_structures.py $q_score_threshold
+    python Scripts/validation/validating_structures.py $q_score_threshold $use_local
 
 fi
 
@@ -118,7 +124,7 @@ if [ $thermodynamics -eq 1 ]; then
    python Scripts/thermodynamics/extend_fibril_layers.py
 
    # Calculate the FoldX per residue stability
-   python Scripts/thermodynamics/foldx_analysis.py $ph $temp $ionstrength
+   python Scripts/thermodynamics/foldx_analysis_multithread.py $ph $temp $ionstrength $num_processes
 
    # Plotting thermodynamic results
    python Scripts/thermodynamics/thermodynamics_plotting.py $remove_poorly_resolved

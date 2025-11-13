@@ -27,6 +27,24 @@ if len(sys.argv) > 1:
 else: 
     user_threshold = "automatic" 
     print("No Q-score threshold provided, defaulting to mean - SD")
+    
+if len(sys.argv) > 2: 
+    try: 
+        use_local = int(sys.argv[2]) 
+        
+        if use_local == 1:
+            print("User selected to use local PDBs") 
+        elif use_local == 0:
+            print("User selected to NOT use local PDBs")
+        else:
+            print("Invalid integer given for using local PDBs — defaulting to excluding local PDBs.")
+            
+    except ValueError: 
+        print("Warning: invalid input for use_local — defaulting to excluding local PDBs.") 
+        use_local = 0 
+else: 
+    use_local = 0 
+    print("No option provided for handling local structures, defaulting to excluding local PDBs.")
 
 ############################################################################################
 
@@ -327,24 +345,25 @@ high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_sc
 high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
 
 ### Adding in any local PDBs for use in future scripts ###
-# Getting a list of local PDB names
-local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+if use_local == 1:
+    # Getting a list of local PDB names
+    local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
 
-# Getting local pdb_ids by pattern matching unique chains in case any local PDBs have intra-PDB variation
-# Create a regex pattern to match any of them
-pattern = "|".join(local_names)  # 'deltaN7|other_local|another'
-pdb_ids = pdb_info[["pdb_id"]].drop_duplicates()
-matches = pdb_ids["pdb_id"].str.contains(pattern)
+    # Getting local pdb_ids by pattern matching unique chains in case any local PDBs have intra-PDB variation
+    # Create a regex pattern to match any of them
+    pattern = "|".join(local_names)  # 'deltaN7|other_local|another'
+    pdb_ids = pdb_info[["pdb_id"]].drop_duplicates()
+    matches = pdb_ids["pdb_id"].str.contains(pattern)
 
-# Filter the DataFrame to see which PDB IDs match
-matched_pdbs = pdb_ids[matches]
+    # Filter the DataFrame to see which PDB IDs match
+    matched_pdbs = pdb_ids[matches]
 
-# Create a DataFrame for local PDBs with mean_Q_score = "local"
-local_df = matched_pdbs.copy()
-local_df["mean_Q_score"] = "local" 
+    # Create a DataFrame for local PDBs with mean_Q_score = "local"
+    local_df = matched_pdbs.copy()
+    local_df["mean_Q_score"] = "local" 
 
-# Append local PDBs
-high_resolutuion_PDBs_df = pd.concat([high_resolutuion_PDBs_df, local_df], ignore_index=True)
+    # Append local PDBs
+    high_resolutuion_PDBs_df = pd.concat([high_resolutuion_PDBs_df, local_df], ignore_index=True)
 
 # Saving a list of high_resolution PDBs
 high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
@@ -528,51 +547,52 @@ high_resolution_residues = tmp[['pdb_id', 'fibril', 'resno']].drop_duplicates()
 # ---------------------------------------------------
 ### Adding in local PDBs for use in later scripts ###
 
-# Get local PDB IDs that matched
-local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
-pattern = "|".join(local_names)
-local_pdbs = pdb_info_no_chains["pdb_id"][pdb_info_no_chains["pdb_id"].str.contains(pattern)].tolist()
-matches = pdb_info_no_chains["pdb_id"].str.contains(pattern)
+if use_local == 1:
+    # Get local PDB IDs that matched
+    local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+    pattern = "|".join(local_names)
+    local_pdbs = pdb_info_no_chains["pdb_id"][pdb_info_no_chains["pdb_id"].str.contains(pattern)].tolist()
+    matches = pdb_info_no_chains["pdb_id"].str.contains(pattern)
 
-# Filter the DataFrame to see which PDB IDs match
-matched_pdbs = pdb_info_no_chains[matches]
+    # Filter the DataFrame to see which PDB IDs match
+    matched_pdbs = pdb_info_no_chains[matches]
 
-# Folder containing your PDB files
-unique_chains_folder = os.path.join("Output", "PDBs",  "unique_chains")
+    # Folder containing your PDB files
+    unique_chains_folder = os.path.join("Output", "PDBs",  "unique_chains")
 
-# Initialize a list to collect all rows
-rows = []
+    # Initialize a list to collect all rows
+    rows = []
 
-# Loop over each matched PDB
-for _, row in matched_pdbs.iterrows():
-    pdb_id = row["pdb_id"]
-    fibril = row["fibril"]
+    # Loop over each matched PDB
+    for _, row in matched_pdbs.iterrows():
+        pdb_id = row["pdb_id"]
+        fibril = row["fibril"]
 
-    # Construct the path to the PDB file
-    pdb_file = os.path.join(unique_chains_folder, f"{pdb_id}.pdb")
-    
-    if not os.path.exists(pdb_file):
-        print(f"Warning: {pdb_file} not found, skipping")
-        continue
+        # Construct the path to the PDB file
+        pdb_file = os.path.join(unique_chains_folder, f"{pdb_id}.pdb")
+        
+        if not os.path.exists(pdb_file):
+            print(f"Warning: {pdb_file} not found, skipping")
+            continue
 
-    # Read the PDB file line by line
-    with open(pdb_file, "r") as f:
-        for line in f:
-            # Only consider ATOM records for residues
-            if line.startswith("ATOM") or line.startswith("HETATM"):
-                # Columns 23-26 (1-based) = residue number
-                resno = int(line[22:26].strip())
-                # Add row to list
-                rows.append({"pdb_id": pdb_id, "fibril": fibril, "resno": resno})
+        # Read the PDB file line by line
+        with open(pdb_file, "r") as f:
+            for line in f:
+                # Only consider ATOM records for residues
+                if line.startswith("ATOM") or line.startswith("HETATM"):
+                    # Columns 23-26 (1-based) = residue number
+                    resno = int(line[22:26].strip())
+                    # Add row to list
+                    rows.append({"pdb_id": pdb_id, "fibril": fibril, "resno": resno})
 
-# Convert to DataFrame
-local_residues_df = pd.DataFrame(rows)
+    # Convert to DataFrame
+    local_residues_df = pd.DataFrame(rows)
 
-# Remove duplicates if multiple chains have the same residue
-local_residues_df = local_residues_df.drop_duplicates().reset_index(drop=True)
+    # Remove duplicates if multiple chains have the same residue
+    local_residues_df = local_residues_df.drop_duplicates().reset_index(drop=True)
 
-# merging local_residues_df with high_resolution_df
-high_resolution_residues = pd.concat([high_resolution_residues, local_residues_df], ignore_index=True)
+    # merging local_residues_df with high_resolution_df
+    high_resolution_residues = pd.concat([high_resolution_residues, local_residues_df], ignore_index=True)
 
 # ---------------------------------------------------
 

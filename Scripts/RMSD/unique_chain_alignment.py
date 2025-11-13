@@ -123,7 +123,11 @@ std_rmsd = filtered_df["rmsd"].std()
 if len(sys.argv) > 1: 
     try: 
         penalty = int(sys.argv[1]) 
-        print(f"RMSD Penalty: mean + {penalty}*SD") 
+        
+        if penalty == 0:
+            print("User has specified no RMSD penalty")
+        else:
+            print(f"RMSD Penalty: mean + {penalty}*SD") 
     except ValueError: 
         print("Warning: invalid penalty provided — defaulting to no penalty") 
         penalty = 0 

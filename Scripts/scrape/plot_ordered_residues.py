@@ -3,10 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import re
+import sys
 
 print("Running: plot_ordered_residues.py")
 
-
+# =============================================================================
+# Defining Functions
+# =============================================================================
 
 def get_residue_ranges(pdb_path):
     residues = set()
@@ -37,12 +40,31 @@ def get_residue_ranges(pdb_path):
 
     return ranges
 
-
 def alphanum_key(s):
     """Turn a string into a list of ints and strings for natural sorting."""
     return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
 
+# =============================================================================
+# Read system arguments
+# =============================================================================
 
+if len(sys.argv) > 1: 
+    try: 
+        use_local = int(sys.argv[1]) 
+        
+        if use_local == 1:
+            print("User selected to use local PDBs") 
+        elif use_local == 0:
+            print("User selected to NOT use local PDBs")
+        else:
+            print("Invalid integer given for using local PDBs — defaulting to excluding local PDBs.")
+            
+    except ValueError: 
+        print("Warning: invalid input for use_local — defaulting to excluding local PDBs.") 
+        use_local = 0 
+else: 
+    use_local = 0 
+    print("No option provided for handling local structures, defaulting to excluding local PDBs.")
 
 # =============================================================================
 # Load and clean data
@@ -56,29 +78,31 @@ data = data[data["Method"] != "ssNMR"]
 residues = data[["PDB ID", "Residues Ordered"]].copy()
 residues.columns = ["pdb", "ordered_residues"]
 
+# ---------------------------------------------------------------------------------
 ### Adding in local structures
-local_dir = "Local"
-local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
 
-# Collect the residue ranges for each PDB
-local = []
-for pdb_file in local_pdbs:
-    pdb_path = os.path.join(local_dir, pdb_file)
-    residue_ranges = get_residue_ranges(pdb_path)
-    formatted_ranges = [f"{start}-{end}" if start != end else f"{start}" for start, end in residue_ranges]
-    # Add to data with filename minus .pdb
-    local.append({
-        "pdb": os.path.splitext(pdb_file)[0],
-        "ordered_residues": ", ".join(formatted_ranges)
-    })
+if use_local == 1:
+    local_dir = "Local"
+    local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
 
-# Convert to DataFrame
-local_df = pd.DataFrame(local)
+    # Collect the residue ranges for each PDB
+    local = []
+    for pdb_file in local_pdbs:
+        pdb_path = os.path.join(local_dir, pdb_file)
+        residue_ranges = get_residue_ranges(pdb_path)
+        formatted_ranges = [f"{start}-{end}" if start != end else f"{start}" for start, end in residue_ranges]
+        # Add to data with filename minus .pdb
+        local.append({
+            "pdb": os.path.splitext(pdb_file)[0],
+            "ordered_residues": ", ".join(formatted_ranges)
+        })
 
-residues = pd.concat([residues, local_df], ignore_index=True)
+    # Convert to DataFrame
+    local_df = pd.DataFrame(local)
 
+    residues = pd.concat([residues, local_df], ignore_index=True)
 
-
+# ---------------------------------------------------------------------------------
 
 # Split by commas (indicating discontinuities)
 residues["ordered_residues"] = residues["ordered_residues"].str.split(",")

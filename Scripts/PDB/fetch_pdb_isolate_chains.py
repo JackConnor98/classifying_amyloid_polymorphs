@@ -2,6 +2,7 @@
 import pymol
 from pymol import cmd
 import os
+import sys
 import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
@@ -10,6 +11,28 @@ from scipy.sparse import csr_matrix
 import string
 from Bio.SeqUtils import seq1
 
+
+# =============================================================================
+# Read system arguments
+# =============================================================================
+
+if len(sys.argv) > 1: 
+    try: 
+        use_local = int(sys.argv[1]) 
+        
+        if use_local == 1:
+            print("User selected to use local PDBs") 
+        elif use_local == 0:
+            print("User selected to NOT use local PDBs")
+        else:
+            print("Invalid integer given for using local PDBs — defaulting to excluding local PDBs.")
+            
+    except ValueError: 
+        print("Warning: invalid input for use_local — defaulting to excluding local PDBs.") 
+        use_local = 0 
+else: 
+    use_local = 0 
+    print("No option provided for handling local structures, defaulting to excluding local PDBs.")
 
 #############################################################################################################################
 
@@ -25,12 +48,13 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
         pdb_names.append(line.strip())
 
 ### Adding in local structures
-local_dir = "Local"
-local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
+if use_local == 1:
+    local_dir = "Local"
+    local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
 
-for local in local_pdbs:
-    local_name = os.path.splitext(local)[0]
-    pdb_names.append(local_name)
+    for local in local_pdbs:
+        local_name = os.path.splitext(local)[0]
+        pdb_names.append(local_name)
 
 # ### For testing single PDBs ###
 # keep = {"7uuq"}
@@ -258,9 +282,34 @@ for pdb in pdb_names:
             file_path = os.path.join(filename)
             os.remove(file_path)
 
+    ###################################################################################
+    
+    ###########################################
+    ### Cleaning up the published structure ###
+    ###########################################
+    
     # Removing non-protein atoms and any UNK residues
     cmd.remove("not polymer.protein")
     cmd.remove("resn UNK")
+
+    # Removing modelled dynamic regions (residues outside the fibril core)
+    # Load metadata
+    metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
+
+    # Extract the residue ranges for this PDB
+    residue_info = metadata.loc[metadata["PDB ID"] == pdb, "Residues Ordered"]
+
+    if not residue_info.empty:
+        residue_ranges = residue_info.iloc[0].replace(" ", "").split(",")  # split on commas and remove spaces
+
+        # Build a PyMOL selection string for residues to keep
+        keep_selection = " or ".join([f"resi {r}" for r in residue_ranges])
+        print(f"Keeping residues {', '.join(residue_ranges)} for {pdb}")
+
+        # Remove everything outside these ranges
+        cmd.remove(f"not ({keep_selection})")
+    else:
+        print(f"No residue range info found for {pdb}, keeping all residues.")
 
     ###############################################
     ### Creating a dataframe from the .pdb file ###

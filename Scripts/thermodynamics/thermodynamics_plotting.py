@@ -6,8 +6,6 @@ import numpy as np
 from plotnine import *
 
 # Read command line arguments
-remove_poorly_resolved = int(sys.argv[1])
-
 if len(sys.argv) > 1: 
     try: 
         remove_poorly_resolved = int(sys.argv[1]) 

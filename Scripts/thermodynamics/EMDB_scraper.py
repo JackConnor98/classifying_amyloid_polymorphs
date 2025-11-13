@@ -42,85 +42,89 @@ emdb_numbers = [emdb for pdb, emdb in emdb_results]
 results = []
 missing_data = []
 
-for i in range(len(emdb_numbers)):
-    if emdb_numbers[i] != "NA":
-        url = f"https://files.wwpdb.org/pub/emdb/validation_reports/EMD-{emdb_numbers[i]}/emd_{emdb_numbers[i]}_full_validation.pdf.gz"
-        response = requests.get(url, stream=True)
-        gz_path = "downloaded.pdf.gz"
-        pdf_path = "downloaded.pdf"
-        second_page_text = ""
-        if response.status_code == 200:
-            with open(gz_path, 'wb') as f:
-                for chunk in response.iter_content(1024):
-                    f.write(chunk)
-            # Check if file is gzipped
-            with open(gz_path, 'rb') as f:
-                magic = f.read(2)
-            is_gzipped = magic == b'\x1f\x8b'
-            try:
-                if is_gzipped:
-                    with gzip.open(gz_path, 'rb') as f_in:
-                        with open(pdf_path, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
-                else:
-                    os.rename(gz_path, pdf_path)
-                try:
-                    pdf = PyPDF2.PdfReader(pdf_path)
-                except Exception as e:
-                    print(f"Could not read PDF for {emdb_numbers[i]}: {e}")
-                    results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
-                    continue
-            except Exception as e:
-                print(f"Could not extract PDF for {emdb_numbers[i]}: {e}")
-                results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
-                continue
+for pdb_id, emdb_id in emdb_results:
+    if emdb_id == "NA":
+        missing_data.append(pdb_id)
+        results.append((pdb_id, "NA", "NA", "NA", "NA", "NA"))
+        print(f"PDB: {pdb_id}   EMDB: Not Found")
+        continue
 
-            if len(pdf.pages) >= 2:
-                second_page = pdf.pages[1]
-                second_page_text = second_page.extract_text()
+    url = f"https://files.wwpdb.org/pub/emdb/validation_reports/EMD-{emdb_id}/emd_{emdb_id}_full_validation.pdf.gz"
+    response = requests.get(url, stream=True)
+    gz_path = "downloaded.pdf.gz"
+    pdf_path = "downloaded.pdf"
+    second_page_text = ""
+
+    if response.status_code == 200:
+        with open(gz_path, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)
+
+        with open(gz_path, 'rb') as f:
+            magic = f.read(2)
+        is_gzipped = magic == b'\x1f\x8b'
+
+        try:
+            if is_gzipped:
+                with gzip.open(gz_path, 'rb') as f_in:
+                    with open(pdf_path, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
             else:
-                print("The PDF does not have at least 2 pages.")
-                results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
+                os.rename(gz_path, pdf_path)
+
+            try:
+                pdf = PyPDF2.PdfReader(pdf_path)
+            except Exception as e:
+                print(f"Could not read PDF for {emdb_id}: {e}")
+                results.append((pdb_id, emdb_id, "NA", "NA", "NA", "NA"))
                 continue
-        else:
-            print("Failed to download the PDF.")
-            results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
+        except Exception as e:
+            print(f"Could not extract PDF for {emdb_id}: {e}")
+            results.append((pdb_id, emdb_id, "NA", "NA", "NA", "NA"))
             continue
 
-        twist_pattern = r"wist=(-?\d+\.\d+)"
-        rise_pattern = r"rise=([\d.]+)"
-        twist_match = re.search(twist_pattern, second_page_text)
-        rise_match = re.search(rise_pattern, second_page_text)
-
-        if twist_match and rise_match:
-            extracted_twist = float(twist_match.group(1))
-            extracted_rise = float(rise_match.group(1))
-            if abs(extracted_twist) > 100:
-                twist_converted = False
-                if extracted_twist < 0:
-                    extracted_twist = round(180 - abs(extracted_twist), 2)
-                    twist_converted = True
-                if extracted_twist > 0 and twist_converted == False:
-                    extracted_twist = round(extracted_twist - 180, 2)
-            half_pitch = round(abs((180/extracted_twist)*extracted_rise), 2)
-            handed = "right" if extracted_twist > 0 else "left"
-            results.append((pdb[i], emdb_numbers[i], extracted_twist, extracted_rise, half_pitch, handed))
-            print("Helical Twist: ", extracted_twist)
-            print("\nHelical Rise: ", extracted_rise)
-            print("\nHalf Pitch: ", half_pitch)
-            print("\nHandedness: ", handed)
+        if len(pdf.pages) >= 2:
+            second_page = pdf.pages[1]
+            second_page_text = second_page.extract_text()
         else:
-            results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
-            missing_data.append(pdb[i])
-            print("No match found.")
-
-        # Clean up files
-        if os.path.exists(pdf_path):
-            os.remove(pdf_path)
-        if os.path.exists(gz_path):
-            os.remove(gz_path)
+            print(f"The PDF for {emdb_id} does not have at least 2 pages.")
+            results.append((pdb_id, emdb_id, "NA", "NA", "NA", "NA"))
+            continue
     else:
-        results.append((pdb[i], emdb_numbers[i], "NA", "NA", "NA", "NA"))
+        print(f"Failed to download the PDF for {emdb_id}.")
+        results.append((pdb_id, emdb_id, "NA", "NA", "NA", "NA"))
+        continue
+
+    twist_match = re.search(r"wist=(-?\d+\.\d+)", second_page_text)
+    rise_match = re.search(r"rise=([\d.]+)", second_page_text)
+
+    if twist_match and rise_match:
+        extracted_twist = float(twist_match.group(1))
+        extracted_rise = float(rise_match.group(1))
+
+        if abs(extracted_twist) > 100:
+            twist_converted = False
+            if extracted_twist < 0:
+                extracted_twist = round(180 - abs(extracted_twist), 2)
+                twist_converted = True
+            if extracted_twist > 0 and not twist_converted:
+                extracted_twist = round(extracted_twist - 180, 2)
+
+        half_pitch = round(abs((180 / extracted_twist) * extracted_rise), 2)
+        handed = "right" if extracted_twist > 0 else "left"
+        results.append((pdb_id, emdb_id, extracted_twist, extracted_rise, half_pitch, handed))
+        print(f"PDB: {pdb_id}\nHelical Twist: {extracted_twist}\nHelical Rise: {extracted_rise}\nHalf Pitch: {half_pitch}\nHandedness: {handed}\n")
+    else:
+        results.append((pdb_id, emdb_id, "NA", "NA", "NA", "NA"))
+        missing_data.append(pdb_id)
+        print(f"No match found for {pdb_id}.")
+
+    # Clean up files
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+    if os.path.exists(gz_path):
+        os.remove(gz_path)
+
 
 # Create and write the results to a text file
 with open(os.path.join("Output", "emdb_data.txt"), "w") as file:
