@@ -2,15 +2,16 @@
 
 # TODO
 # Calculate intersheet spacing
+# Add support for local PDB structures
 
 # Setting Run Parameters
-scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
+scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_strand=0                    # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
@@ -19,6 +20,9 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1
+
+# Specify the Q-score threshold [0-1] (default is set to the mean - SD Q-score accross all PDBs)
+q_score_threshold="automatic"
 
 # Would you like to add a penalty to non-overlapping residues in the RMSD calculation?
 penalty=0                     # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
@@ -91,7 +95,7 @@ if [ $validation -eq 1 ]; then
     python Scripts/validation/Q_score_scraper.py
 
     # Selecting good resolution structures
-    python Scripts/validation/validating_structures.py
+    python Scripts/validation/validating_structures.py $q_score_threshold
 
 fi
 

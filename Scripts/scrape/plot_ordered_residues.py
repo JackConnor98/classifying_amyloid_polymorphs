@@ -56,10 +56,7 @@ data = data[data["Method"] != "ssNMR"]
 residues = data[["PDB ID", "Residues Ordered"]].copy()
 residues.columns = ["pdb", "ordered_residues"]
 
-
-
 ### Adding in local structures
-local_pdbs = [f for f in os.listdir("Local") if f.endswith(".pdb")]
 local_dir = "Local"
 local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
 

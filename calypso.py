@@ -29,6 +29,7 @@ def run_pipeline():
     b_strand = b_strand_var.get()
     png = png_var.get()
 
+    q_score_threshold= safe(q_score_threshold_var.get(), "automatic")
     penalty = safe(penalty_var.get(), "0")
     custom_cut_height = safe(custom_cut_height_var.get(), "0")
     remove_poorly_resolved = str(remove_poorly_resolved_var.get())
@@ -56,7 +57,7 @@ def run_pipeline():
 
         if validation == 1:
             subprocess.run(["python", "Scripts/validation/Q_score_scraper.py"], check = True)
-            subprocess.run(["python", "Scripts/validation/validating_structures.py"], check = True)
+            subprocess.run(["python", "Scripts/validation/validating_structures.py", q_score_threshold], check = True)
             selected_jobs.append("3.Validation")
 
         if rmsd == 1:
@@ -197,6 +198,13 @@ make_checkbox(pdb_frame, "Fetch and analyse PDBs", pdb_var)
 validation_frame = section("3. Validation")
 validation_var = ctk.IntVar(value = 1)
 make_checkbox(validation_frame, "Run validation (Q-scores and selection)", validation_var)
+
+q_score_threshold_var = ctk.StringVar(value = "automatic")
+
+q_score_row = ctk.CTkFrame(validation_frame)
+q_score_row.pack(fill = "x", pady = 4)
+make_label_new_line(q_score_row, "Specify the Q-score threshold [0-1]\nDefault is set to the mean - SD Q-score accross all PDBs")
+make_entry(q_score_row, q_score_threshold_var)
 
 # -----------------------------------------------------------
 # 4. RMSD

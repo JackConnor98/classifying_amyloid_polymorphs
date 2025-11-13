@@ -20,7 +20,7 @@ if not os.path.exists(single_pdb_dir):
 
 if len(sys.argv) > 1: 
     try: 
-        custom_cut_height = int(sys.argv[1]) 
+        custom_cut_height = float(sys.argv[1]) 
         print(f"Cut Height: {custom_cut_height}") 
     except ValueError: 
         print("Warning: invalid cut height provided — defaulting to mean Euclidean distance") 

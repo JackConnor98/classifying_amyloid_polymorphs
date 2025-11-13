@@ -24,6 +24,14 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
         # Strip any leading/trailing whitespaces and append the name to the list
         pdb_names.append(line.strip())
 
+### Adding in local structures
+local_dir = "Local"
+local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
+
+for local in local_pdbs:
+    local_name = os.path.splitext(local)[0]
+    pdb_names.append(local_name)
+
 # ### For testing single PDBs ###
 # keep = {"7uuq"}
 # with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
@@ -155,39 +163,46 @@ for pdb in pdb_names:
 
     print(f"\nAnalyzing {pdb}")
 
-    # Fetch the pdb
-    cmd.fetch(pdb, type="pdb1")
+    # Determine if this is local or remote
+    local_path = os.path.join(local_dir, f"{pdb}.pdb")
+    if os.path.exists(local_path):
+        print(f"Loading local PDB: {local_path}")
+        cmd.load(local_path)
 
-    # check whether PyMOL created the object
-    if not cmd.get_object_list(pdb):
-        print(f"Biological assembly failed for {pdb}, retrying...")
-        cmd.reinitialize()
-        cmd.fetch(pdb)
-        check_states = False
     else:
-        check_states = True
+        # Fetch the pdb
+        cmd.fetch(pdb, type="pdb1")
 
-    ###################################################################################
+        # check whether PyMOL created the object
+        if not cmd.get_object_list(pdb):
+            print(f"Biological assembly failed for {pdb}, retrying...")
+            cmd.reinitialize()
+            cmd.fetch(pdb)
+            check_states = False
+        else:
+            check_states = True
 
-    # Handling PDBs with multiple states (e.g. 8azs)
+        ###################################################################################
 
-    if check_states:
-        # Count how many states (models) are present
-        n_states = cmd.count_states(pdb)
-        if n_states > 1:
-            print(f"{pdb} has {n_states} state(s).")
-            print(f"→ Splitting {n_states} states and recombining into one object...")
-            # Split all states into separate objects
-            cmd.split_states(pdb)
-            # Delete the original object
-            cmd.delete(pdb)
-            # Create an empty object to hold the merged structure
-            cmd.create(pdb, "none")
-            # Loop over each split state and copy it into the main object
-            for i in range(1, n_states + 1):
-                state_obj = f"{pdb}_{i:04d}"  # e.g. 8AZS_0001
-                cmd.copy_to(pdb, state_obj)
-                cmd.delete(state_obj)  # cleanup
+        # Handling PDBs with multiple states (e.g. 8azs)
+
+        if check_states:
+            # Count how many states (models) are present
+            n_states = cmd.count_states(pdb)
+            if n_states > 1:
+                print(f"{pdb} has {n_states} state(s).")
+                print(f"→ Splitting {n_states} states and recombining into one object...")
+                # Split all states into separate objects
+                cmd.split_states(pdb)
+                # Delete the original object
+                cmd.delete(pdb)
+                # Create an empty object to hold the merged structure
+                cmd.create(pdb, "none")
+                # Loop over each split state and copy it into the main object
+                for i in range(1, n_states + 1):
+                    state_obj = f"{pdb}_{i:04d}"  # e.g. 8AZS_0001
+                    cmd.copy_to(pdb, state_obj)
+                    cmd.delete(state_obj)  # cleanup
 
 
     ###################################################################################

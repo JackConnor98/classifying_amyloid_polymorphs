@@ -16,7 +16,7 @@ from matplotlib.patches import Arc
 
 if len(sys.argv) > 1: 
     try: 
-        distance_threshold = int(sys.argv[1]) 
+        distance_threshold = float(sys.argv[1]) 
         print(f"Distance Threshold: {distance_threshold}") 
     except ValueError: 
         print("Warning: invalid distance threshold provided — defaulting to 10.8.") 

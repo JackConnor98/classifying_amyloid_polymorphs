@@ -1,10 +1,32 @@
 import os
+import sys
 import pandas as pd
 import numpy as np
 import gzip
 import xml.etree.ElementTree as ET
 from plotnine import *
 from scipy.stats import gaussian_kde
+
+############################################################################################
+
+### Reading in command line arguments ###
+
+if len(sys.argv) > 1: 
+
+    user_threshold = sys.argv[1].lower()
+
+    if user_threshold == "automatic":
+        print("Automatic Q-Score selected [Mean-SD]")
+    else:
+        try: 
+            user_threshold = float(sys.argv[1]) 
+            print(f"Q-Score Threshold: {user_threshold}") 
+        except ValueError: 
+            print("Warning: invalid Q-score threshold provided — defaulting to Mean - SD") 
+            user_threshold = "automatic" 
+else: 
+    user_threshold = "automatic" 
+    print("No Q-score threshold provided, defaulting to mean - SD")
 
 ############################################################################################
 
@@ -182,8 +204,17 @@ q_score_df = pd.merge(q_score_df, resolution_df, on = "PDB")
 # Threshold for Q-score will me set to mean - 1SD
 mean_Q_score = np.mean(q_score_df["Q_score"])
 sd_Q_score = np.std(q_score_df["Q_score"])
-Q_score_threshold = mean_Q_score - sd_Q_score
 
+# Case 1: user_threshold is a number (int or float)
+if isinstance(user_threshold, (int, float)):
+    Q_score_threshold = user_threshold
+# Case 2: user_threshold is the string "automatic"
+elif isinstance(user_threshold, str) and user_threshold.lower() == "automatic":
+    Q_score_threshold = mean_Q_score - sd_Q_score
+# Case 3: anything else
+else:
+    print("Error interpreting provided Q-score threshold, defaulting to Mean - SD")
+    Q_score_threshold = mean_Q_score - sd_Q_score
 
 ####################################################
 ### Calculating the mean Q-score for each pdb_id ###
@@ -293,9 +324,29 @@ for i in pdb_names:
 # Selecting PDBs with a mean Q-score > Q_score_threshold
 PDB_q_score["pdb_id"] = PDB_q_score["pdb_id"].astype(str)
 high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_score_threshold].tolist()
+high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
+
+### Adding in any local PDBs for use in future scripts ###
+# Getting a list of local PDB names
+local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+
+# Getting local pdb_ids by pattern matching unique chains in case any local PDBs have intra-PDB variation
+# Create a regex pattern to match any of them
+pattern = "|".join(local_names)  # 'deltaN7|other_local|another'
+pdb_ids = pdb_info[["pdb_id"]].drop_duplicates()
+matches = pdb_ids["pdb_id"].str.contains(pattern)
+
+# Filter the DataFrame to see which PDB IDs match
+matched_pdbs = pdb_ids[matches]
+
+# Create a DataFrame for local PDBs with mean_Q_score = "local"
+local_df = matched_pdbs.copy()
+local_df["mean_Q_score"] = "local" 
+
+# Append local PDBs
+high_resolutuion_PDBs_df = pd.concat([high_resolutuion_PDBs_df, local_df], ignore_index=True)
 
 # Saving a list of high_resolution PDBs
-high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
 high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
 
 #################################################
@@ -400,7 +451,7 @@ p = (
 )
 
 # Save plot
-#p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
+p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
 
 ### Stacked Bar Chart ###
 
@@ -473,6 +524,57 @@ tmp = pd.merge(good_resolution, pdb_info_no_chains, on="pdb_id")
 
 # Selecting residues that are present in at least one chain of a fibril at good resolution
 high_resolution_residues = tmp[['pdb_id', 'fibril', 'resno']].drop_duplicates()
+
+# ---------------------------------------------------
+### Adding in local PDBs for use in later scripts ###
+
+# Get local PDB IDs that matched
+local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+pattern = "|".join(local_names)
+local_pdbs = pdb_info_no_chains["pdb_id"][pdb_info_no_chains["pdb_id"].str.contains(pattern)].tolist()
+matches = pdb_info_no_chains["pdb_id"].str.contains(pattern)
+
+# Filter the DataFrame to see which PDB IDs match
+matched_pdbs = pdb_info_no_chains[matches]
+
+# Folder containing your PDB files
+unique_chains_folder = os.path.join("Output", "PDBs",  "unique_chains")
+
+# Initialize a list to collect all rows
+rows = []
+
+# Loop over each matched PDB
+for _, row in matched_pdbs.iterrows():
+    pdb_id = row["pdb_id"]
+    fibril = row["fibril"]
+
+    # Construct the path to the PDB file
+    pdb_file = os.path.join(unique_chains_folder, f"{pdb_id}.pdb")
+    
+    if not os.path.exists(pdb_file):
+        print(f"Warning: {pdb_file} not found, skipping")
+        continue
+
+    # Read the PDB file line by line
+    with open(pdb_file, "r") as f:
+        for line in f:
+            # Only consider ATOM records for residues
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                # Columns 23-26 (1-based) = residue number
+                resno = int(line[22:26].strip())
+                # Add row to list
+                rows.append({"pdb_id": pdb_id, "fibril": fibril, "resno": resno})
+
+# Convert to DataFrame
+local_residues_df = pd.DataFrame(rows)
+
+# Remove duplicates if multiple chains have the same residue
+local_residues_df = local_residues_df.drop_duplicates().reset_index(drop=True)
+
+# merging local_residues_df with high_resolution_df
+high_resolution_residues = pd.concat([high_resolution_residues, local_residues_df], ignore_index=True)
+
+# ---------------------------------------------------
 
 # Putting in ascending residue order
 high_resolution_residues = high_resolution_residues.sort_values(
