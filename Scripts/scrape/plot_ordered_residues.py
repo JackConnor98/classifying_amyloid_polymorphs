@@ -1,11 +1,48 @@
 import os
 import pandas as pd
-import numpy as np
-import math
-from plotnine import *
-from Bio.PDB import PDBParser
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+import re
 
 print("Running: plot_ordered_residues.py")
+
+
+
+def get_residue_ranges(pdb_path):
+    residues = set()
+
+    with open(pdb_path, "r") as pdb_file:
+        for line in pdb_file:
+            if line.startswith("ATOM") or line.startswith("HETATM"):
+                try:
+                    res_num = int(line[22:26].strip())
+                    residues.add(res_num)
+                except ValueError:
+                    continue
+
+    residues = sorted(residues)
+    if not residues:
+        return []
+
+    ranges = []
+    start = prev = residues[0]
+
+    for res in residues[1:]:
+        if res == prev + 1:
+            prev = res
+        else:
+            ranges.append((start, prev))
+            start = prev = res
+    ranges.append((start, prev))
+
+    return ranges
+
+
+def alphanum_key(s):
+    """Turn a string into a list of ints and strings for natural sorting."""
+    return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
+
+
 
 # =============================================================================
 # Load and clean data
@@ -18,6 +55,33 @@ data = data[data["Method"] != "ssNMR"]
 # Keep relevant columns
 residues = data[["PDB ID", "Residues Ordered"]].copy()
 residues.columns = ["pdb", "ordered_residues"]
+
+
+
+### Adding in local structures
+local_pdbs = [f for f in os.listdir("Local") if f.endswith(".pdb")]
+local_dir = "Local"
+local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
+
+# Collect the residue ranges for each PDB
+local = []
+for pdb_file in local_pdbs:
+    pdb_path = os.path.join(local_dir, pdb_file)
+    residue_ranges = get_residue_ranges(pdb_path)
+    formatted_ranges = [f"{start}-{end}" if start != end else f"{start}" for start, end in residue_ranges]
+    # Add to data with filename minus .pdb
+    local.append({
+        "pdb": os.path.splitext(pdb_file)[0],
+        "ordered_residues": ", ".join(formatted_ranges)
+    })
+
+# Convert to DataFrame
+local_df = pd.DataFrame(local)
+
+residues = pd.concat([residues, local_df], ignore_index=True)
+
+
+
 
 # Split by commas (indicating discontinuities)
 residues["ordered_residues"] = residues["ordered_residues"].str.split(",")
@@ -32,6 +96,8 @@ residues["ordered_residues"] = (
     .str.replace(r'[c()"()]', "", regex=True)
     .str.strip()
 )
+
+
 
 # Split comma-separated regions
 residues["ordered_residues"] = residues["ordered_residues"].str.split(",")
@@ -73,11 +139,12 @@ residues_long = residues_long.dropna(subset=["ordered_residues"]).reset_index(dr
 
 
 residues_long["pdb_group"] = residues_long["pdb"].astype(str) + "_" + residues_long["group"].astype(str)
-  
+
 # =============================================================================
 # Plotting
 # =============================================================================
-num_pdbs = len(data)
+pdbs = sorted(residues_long["pdb"].unique(), key=alphanum_key)
+num_pdbs = len(pdbs)
 protein_names = data["PDB ID"].unique()
 
 # Set base width per label (tweak this depending on how dense your labels are)
@@ -106,96 +173,128 @@ protein_type = data["Protein"].str.lower()  # lowercase for easier matching
 annotations = pd.DataFrame(columns=["xmin","xmax","ymin","ymax","fill"])
 labels = pd.DataFrame(columns=["x","y","label"])
 
-# a-Synuclein case
+# Setting plot dimensions
+fig, ax = plt.subplots(figsize=(max(8, num_pdbs * 0.2), 8))
+
+# Plot each PDB as a line with dots for residues
+for pdb, group_df in residues_long.groupby("pdb_group_interaction"):
+    ax.plot(group_df["pdb"], group_df["ordered_residues"], lw=2, color = "black")
+    ax.scatter(group_df["pdb"], group_df["ordered_residues"], s=30, color="black", zorder=3)
+
+for pdb, group_df in residues_long.groupby("pdb"):
+    # Sort residues numerically
+    group_df = group_df.sort_values("ordered_residues")
+    # Get unique continuous regions
+    regions = group_df.groupby("pdb_group_interaction")["ordered_residues"].agg(["min", "max"]).reset_index()
+    # Draw dashed lines between discontinuous regions
+    for i in range(len(regions)-1):
+        end_prev = regions.loc[i, "max"]
+        start_next = regions.loc[i+1, "min"]
+        ax.plot(
+            [pdb, pdb],                  # same x-coordinate for this PDB
+            [end_prev, start_next],       # vertical line connecting segments
+            linestyle="--", color="black", lw=2
+        )
+
+# Tidy the axis labels
+ax.set_xlabel("PDB", fontsize=24, fontweight="bold")
+ax.set_ylabel("Residue Position", fontsize=24, fontweight="bold")
+ax.set_xticks(range(len(pdbs)))
+ax.set_xticklabels(pdbs, rotation=90, ha="center", fontsize=x_axis_font_size)
+ax.tick_params(axis="y", labelsize=18)
+ax.set_xlim(-0.5, num_pdbs - 0.5) 
+
+
+# Determine protein type for annotations
+protein_type = data["Protein"].str.lower()
+ann_regions = []
+
 if protein_type.str.contains("synuclein").any():
-    annotations = pd.DataFrame({
-        "xmin": [-math.inf, num_pdbs + 1, -math.inf, num_pdbs + 1, -math.inf, num_pdbs + 1],
-        "xmax": [math.inf, num_pdbs + 7, math.inf, num_pdbs + 7, math.inf, num_pdbs + 7],
-        "ymin": [1, 13, 61, 73, 96, 113],
-        "ymax": [60, 23, 95, 83, 140, 123],
-        "fill": ["darkblue","darkblue","red","red","green","green"]
-    })
-    labels = pd.DataFrame({
-        "x": [num_pdbs + 4, num_pdbs + 4, num_pdbs + 4],
-        "y": [18, 78, 118],
-        "label": ["N-Term","NAC","C-Term"]
-    })
+    ann_regions = [
+        (1, 60, "darkblue", "N-Term"),
+        (61, 95, "red", "NAC"),
+        (96, 140, "green", "C-Term")
+    ]
+    rect_height = 15  
+    rect_width = max(2, num_pdbs * 0.1) # width scales with number of PDBs
 
-# Amyloid-beta case
 elif protein_type.str.contains("amyloid-").any():
-    annotations = pd.DataFrame({
-        "xmin": [-math.inf, num_pdbs + 0.75, -math.inf, num_pdbs + 0.75, -math.inf, num_pdbs + 0.75, -math.inf, num_pdbs + 0.75, -math.inf, num_pdbs + 0.75],
-        "xmax": [math.inf, num_pdbs + 2.75, math.inf, num_pdbs + 2.75, math.inf, num_pdbs + 2.75, math.inf, num_pdbs + 2.75, math.inf, num_pdbs + 2.75],
-        "ymin": [1, 6, 17, 17, 24, 23.5, 28, 29.5, 36, 37],
-        "ymax": [16, 10, 21, 21, 27, 27.5, 35, 33.5, 42, 41],
-        "fill": ["darkblue","darkblue","black","black","red","red","orange","orange","green","green"]
-    })
-    labels = pd.DataFrame({
-        "x": [num_pdbs + 1.75]*5,
-        "y": [8, 19, 25.5, 31.5, 39],
-        "label": ["N-Term","Hydrophobic\nCore","Turn\nRegion","Hydrophobic\nRegion","C-Term"]
-    })
+    ann_regions = [
+        (1, 16, "darkblue", "N-Term"),
+        (17, 21, "black", "Hydrophobic\nCore"),
+        (24, 27, "red", "Turn Region"),
+        (28, 35, "orange", "Hydrophobic\nRegion"),
+        (36, 42, "green", "C-Term")
+    ]
+    rect_height = 5  
+    rect_width = max(2, num_pdbs * 0.15) # width scales with number of PDBs
 
-# Tau case
 elif protein_type.str.contains("tau").any():
-    annotations = pd.DataFrame({
-        "xmin": [-math.inf, num_pdbs + 1, -math.inf, num_pdbs + 1, -math.inf, num_pdbs + 1, -math.inf, num_pdbs + 1],
-        "xmax": [math.inf, num_pdbs + 5, math.inf, num_pdbs + 5, math.inf, num_pdbs + 5, math.inf, num_pdbs + 5],
-        "ymin": [243, 253, 274, 284, 305, 315, 336, 346.5],
-        "ymax": [273, 263, 304, 294, 335, 325, 367, 356.5],
-        "fill": ["red","red","green","green","orange","orange","darkblue","darkblue"]
-    })
-    labels = pd.DataFrame({
-        "x": [num_pdbs + 3]*4,
-        "y": [258, 289, 320, 351.5],
-        "label": ["R1","R2","R3","R4"]
-    })
+    ann_regions = [
+        (243, 273, "red", "R1"),
+        (274, 304, "green", "R2"),
+        (305, 335, "orange", "R3"),
+        (336, 367, "darkblue", "R4")
+    ]
+    rect_height = 15  
+    rect_width = max(2, num_pdbs * 0.1) # width scales with number of PDBs
 
-# Create the plot
-p = (
-    ggplot() 
+# Extend y-axis to include both residues and annotations
+all_y = residues_long["ordered_residues"].values
+if ann_regions:
+    ann_ymin = min([ymin for ymin, ymax, _, _ in ann_regions])
+    ann_ymax = max([ymax for ymin, ymax, _, _ in ann_regions])
+    y_min = min(all_y.min(), ann_ymin)
+    y_max = max(all_y.max(), ann_ymax)
+else:
+    y_min, y_max = all_y.min(), all_y.max()
+ax.set_ylim(y_min - 5, y_max + 5)
 
-    + geom_rect(
-        aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax", fill="fill"),
+# Main-axis rectangles (full width)
+for (ymin, ymax, color, _) in ann_regions:
+    rect_main = Rectangle(
+        (-0.5, ymin),          # start at left edge of x-axis
+        num_pdbs - (-0.5),     # width spans all PDBs
+        ymax - ymin,
+        facecolor=color,
+        edgecolor="black",
         alpha=0.5,
-        colour="black",
-        data=annotations
+        clip_on=True           # clipped to axes
     )
-    + geom_text(
-        aes(x="x", y="y", label="label"),
-        data=labels,
-        size=8,
-        fontweight="bold"
+    ax.add_patch(rect_main)
+
+# Draw annotation rectangles outside the axes with labels inside
+x_offset = max(1, num_pdbs * 0.01)   # 1% of the total x-range
+
+for (ymin, ymax, color, label) in ann_regions:
+    # Centre the rectangle at the midpoint of the region
+    y_mid = (ymin + ymax) / 2
+    rect = Rectangle(
+        (num_pdbs + x_offset, y_mid - rect_height/2),  # centre rectangle
+        rect_width,
+        rect_height,
+        facecolor=color,
+        edgecolor="black",
+        alpha=0.5,
+        clip_on=False
+    )
+    ax.add_patch(rect)
+    
+    # Text remains centred
+    ax.text(
+        num_pdbs + x_offset + rect_width/2, 
+        y_mid, 
+        label, 
+        va="center", 
+        ha="center", 
+        fontsize=12, 
+        fontweight="bold", 
+        clip_on=False
     )
 
-    + geom_point(residues_long, aes(x="pdb", y="ordered_residues"), size=3)
-    + geom_line(residues_long, aes(x="pdb", y="ordered_residues", group="pdb"), size=1, linetype="dotted", colour="black")
-    + geom_line(residues_long, aes(x="pdb", y="ordered_residues", group="pdb_group_interaction"), size=2) 
-    + geom_line(residues_long, aes(x="pdb", y="ordered_residues", group = "pdb"), size = 1, linetype = "dotted", colour = "black") 
-    + geom_line(residues_long, aes(x="pdb", y="ordered_residues", group = "pdb_group"), size = 2)
-    + labs(y="Residue Position", x="PDB") 
-    + scale_x_discrete() 
-    + scale_y_continuous(breaks=range(0, 10000, 10)) 
-    + theme_bw() 
-    + theme(
-        panel_border=element_rect(colour="black", fill=None, size=1.5),
-        axis_text_y=element_text(size=14, colour="black"),
-        axis_text_x=element_text(size=x_axis_font_size, colour="black", angle=90, va="center"),
-        axis_title=element_text(size=20, weight="bold"),
-        axis_line=element_line(colour="black", size=1.5),
-        legend_position="none"
-    )
-)
+# Panel Grid
+ax.grid(True, linestyle="--", color="black", alpha = 0.5, lw = 0.25)
 
 # Save plot
-p.save("Output/Ordered_Residues.png", width=plot_width, height=8, dpi=300)
+plt.savefig("Output/Ordered_Residues.png", dpi=300, bbox_inches='tight')
 print("Plot saved to Output/Ordered_Residues.png")
-
-
-
-
-
-
-
-
-

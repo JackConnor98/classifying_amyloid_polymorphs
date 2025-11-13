@@ -5,6 +5,8 @@ import os
 import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from scipy.sparse.csgraph import maximum_bipartite_matching
+from scipy.sparse import csr_matrix
 import string
 from Bio.SeqUtils import seq1
 
@@ -22,7 +24,8 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
         # Strip any leading/trailing whitespaces and append the name to the list
         pdb_names.append(line.strip())
 
-# keep = {"8owd"}
+# ### For testing single PDBs ###
+# keep = {"7uuq"}
 # with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
 #     next(file)  # skip header
 #     pdb_names = [line.strip() for line in file if line.strip() in keep]
@@ -115,6 +118,22 @@ def select_chain_with_lowest_z_com(fibril):
     fibril_chains = current_pdb_df[current_pdb_df['fibril'] == fibril]
     return fibril_chains.loc[fibril_chains['z_com'].idxmin(), 'chain']
 
+def generate_chain_ids(n):
+    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    base = len(alphabet)
+
+    ids = []
+    for i in range(n):
+        name = ""
+        x = i
+        while True:
+            name = alphabet[x % base] + name
+            x //= base
+            if x == 0:
+                break
+        ids.append(name)
+    return ids
+
 
 ################################
 ### Looping Through Each PDB ###
@@ -179,7 +198,8 @@ for pdb in pdb_names:
     all_chains = sorted(cmd.get_chains(pdb))
 
     # Step 2: Prepare a list of valid final chain IDs (A-Z, a-z, 0-9) = 62 total
-    available_ids = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+    #available_ids = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+    available_ids = generate_chain_ids(len(all_chains))
 
     if len(all_chains) > len(available_ids):
         raise ValueError("Too many chains to assign unique single-character chain IDs!")
@@ -217,7 +237,6 @@ for pdb in pdb_names:
     output_path = os.path.join("Output", "PDBs", "published_structure", f"{pdb}.pdb")
     cmd.save(output_path, pdb)
 
-
     # Deleting the .cif files that automatically save
     for filename in os.listdir():
         if filename.endswith((".cif", ".pdb1")):
@@ -227,7 +246,6 @@ for pdb in pdb_names:
     # Removing non-protein atoms and any UNK residues
     cmd.remove("not polymer.protein")
     cmd.remove("resn UNK")
-
 
     ###############################################
     ### Creating a dataframe from the .pdb file ###
@@ -323,6 +341,14 @@ for pdb in pdb_names:
 
     # Assigning fragmented monomers to the same chain (Only if needed)
     if len(closest_residue_pair) > 0:
+
+        # Checking if Hungarian agorithm is possible
+        allowed = ~np.isinf(distance_matrix)
+        allowed_sparse = csr_matrix(allowed)
+        matching = maximum_bipartite_matching(allowed_sparse, perm_type = "column")
+        if matching is None or np.any(matching == -1):
+            print("Skipping HK algorithm: no perfect matching possible.")
+            continue
 
         # Apply the Hungarian algorithm
         row_ind, col_ind = linear_sum_assignment(distance_matrix)
