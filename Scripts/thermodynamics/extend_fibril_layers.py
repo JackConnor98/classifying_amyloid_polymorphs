@@ -41,10 +41,11 @@ for index, row in df.iterrows():
     pdb = df["pdb"].iloc[i]
     print("PDB: ", pdb)
     twist = float(df["twist"].iloc[i])
-    print("Twist: ", twist)
     rise = float(df["rise"].iloc[i])
     if rise < 3:   
         rise = rise * 2
+        twist = twist * 2
+    print("Twist: ", twist)    
     print("Rise: ", rise, "\n")
 
     if np.isnan(twist) or np.isnan(rise):
