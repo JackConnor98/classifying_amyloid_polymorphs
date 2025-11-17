@@ -1,4 +1,0 @@
-conda create -n calypso
-conda activate calypso
-conda install -c conda-forge pymol-open-source bioconda muscle
-pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2 networkx tkinter customtkinter

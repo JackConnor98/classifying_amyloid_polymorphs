@@ -38,12 +38,8 @@ For more information, follow the instuctions given by PyFoldx: https://github.co
 Important note - Under the academic licence, the FoldX license agreement ends on the 31st December of each year. To continue using FoldX the FoldX.exe needs to be redownloaded and added to your path as described in PyFoldX's installation.
 
 ### Conda Virtual Environment
-conda create -n calypso
+conda env create -f environment.yaml
 conda activate calypso
-conda install -c conda-forge pymol-open-source bioconda muscle
-
-### Python Packages
-pip install plotnine bs4 requests Bio scipy pyfoldx PyPDF2 networkx tkinter customtkinter
 
 ## Running the analysis
 The analysis can be run from a GUI by running calypso.py where you can adjust run parameters.
