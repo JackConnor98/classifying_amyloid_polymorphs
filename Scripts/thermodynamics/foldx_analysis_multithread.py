@@ -89,21 +89,27 @@ def repair_single(pdb):
         print(f"✅  Skipping {pdb_base}, repaired file already exists.")
         return pdb
     
-    cmd = [
-        foldx_path,
-        "--command=RepairPDB",
-        f"--pdb-dir={file_path}",
-        f"--output-dir={save_path}",
-        f"--pdb={os.path.basename(pdb)}"
-    ]
-    print(f"Repairing {pdb}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    if result.returncode != 0:
-        print(f"⚠️  Error repairing {pdb}")
-    else:
-        print(f"✅  Repaired {pdb}")
-    
+    retry_count = 0
+    max_retries = 5
+
+    while retry_count < max_retries:
+        print(f"Attempt {retry_count}/{max_retries} to repair and extract energies for {pdb}")
+        cmd = [
+            foldx_path,
+            "--command=RepairPDB",
+            f"--pdb-dir={file_path}",
+            f"--output-dir={save_path}",
+            f"--pdb={os.path.basename(pdb)}"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"⚠️  Error repairing {pdb}")
+            retry_count += 1
+        else:
+            print(f"✅  Repaired {pdb}")
+            retry_count = max_retries  # Exit loop
+        
     # Rename repaired file
     repaired_file = os.path.join(save_path, f"{pdb_base}_Repair.pdb")
     if os.path.exists(repaired_file):

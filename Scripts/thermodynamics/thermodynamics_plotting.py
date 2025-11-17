@@ -216,8 +216,8 @@ p = (
     + geom_line(aes(y='mean_energy', group='interaction'), size=0.75, alpha=0.25)
     + geom_hline(yintercept=0, colour="blue", size=0.75, linetype="solid", alpha=0.9)
     + scale_x_continuous(
-        breaks=np.arange(0, 9999999, 1),
-        labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
+        breaks=np.arange(0, 9999, 1),
+        labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999, 1)],
         expand=(0.01, 0.01))
     + labs(
         y=r'$\mathbf{\Delta G^{\circ}\ per\ residue\ (kcal\cdot mol^{-1})}$',
@@ -251,8 +251,7 @@ for pdb in pdb_names:
         + geom_hline(yintercept = 0, colour = "blue", size = 1, linetype = "dashed", alpha = 0.9)
         + geom_hline(yintercept = stabilising_threshold, colour = "red", size = 1, linetype = "dashed", alpha = 0.9)
         + scale_x_continuous(
-            breaks=np.arange(0, 9999999, 1),
-            labels=[str(i) if i % 10 == 0 else "" for i in range(0, 9999999, 1)],
+            breaks = range(0, x["Pos"].max() + 1, 1),
             expand=(0.01, 0.01))
         + labs(
             title = f"{pdb}",
@@ -622,6 +621,16 @@ rmsd_cluster_df = rmsd_cluster_df.sort_values(by='group').reset_index(drop=True)
 # Saving rmsd_cluster_df
 rmsd_cluster_df.to_csv(os.path.join(deltaG_comp_path, "sum_deltaG_per_PDB.csv"), index = False)
 
+# Convert group to integer if possible
+rmsd_cluster_df["group_int"] = rmsd_cluster_df["group"].astype(int)
+
+# Convert to ordered categorical for plotting
+rmsd_cluster_df["group"] = pd.Categorical(
+    rmsd_cluster_df["group_int"], 
+    categories=sorted(rmsd_cluster_df["group_int"].unique()), 
+    ordered=True
+)
+
 # Plotting sum_mean_energy for each RMSD cluster group
 p = (
     ggplot(rmsd_cluster_df, aes(x = "group", y = "sum_mean_energy")) 
@@ -753,7 +762,7 @@ p = (
     + geom_col() 
     + geom_hline(yintercept = 0, colour = "black", size = 0.5)
     + geom_hline(yintercept = stabilising_threshold, colour = "#f27272", size = 1, linetype = "dashed") 
-    + scale_x_continuous(breaks = np.arange(0, 9999999, 10), expand = (0,0)) 
+    + scale_x_continuous(breaks = np.arange(0, 9999, 10), expand = (0,0)) 
     + scale_fill_manual(values = {
         "above_0": "#6BAF5F",
         "below_0_above_threshold": "#fabb1b",

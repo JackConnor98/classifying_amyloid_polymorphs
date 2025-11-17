@@ -8,9 +8,9 @@
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=1                    # 0 - Do not validate               | 1 - Run validation
+validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
