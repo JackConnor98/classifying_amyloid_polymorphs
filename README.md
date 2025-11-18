@@ -48,5 +48,7 @@ Alternatively the analysis can be ran without a GUI using run_analyis.sh. In thi
 ## Using local/unpublished PDBs
 Move any PDBs that are cannot be retrieved online using PyMol's fetch command into the Local folder for them to be included in the analysis.
 
-
+## Energy minimisation
+The rate limiting step for the analysis pipeline is the energy minimisation of the side chains that is performed by FoldX prior to calculating free energy. To address this I have added Repaired_pdbs.zip that contains pre-repaired PDB structures. This enables the user to skip repairing the bulk of amyloid structures and instead only repair those that have not yet been added to Repaired_pdbs.zip.
+There is no need to extract this folder manually, it is handled by 'Scripts/thermodynamics/foldx_analyis_multithread.py'. 
 

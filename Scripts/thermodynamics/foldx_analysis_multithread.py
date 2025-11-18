@@ -6,6 +6,7 @@ from pyfoldx.foldx import foldxHandler
 import sys
 import pandas as pd
 import os
+import zipfile
 import re
 import subprocess
 from concurrent.futures import ProcessPoolExecutor
@@ -71,6 +72,21 @@ if not os.path.exists(thermodynamic_path):
 pdb_files = [os.path.join(file_path, file) for file in os.listdir(file_path) if file.endswith(".pdb")]
 
 #############################################################################################################################
+
+##########################################
+### Extracting pre-repaired structures ###
+##########################################
+
+def extract_zip(zip_path, extract_to):
+    # Ensure the destination folder exists
+    os.makedirs(extract_to, exist_ok = True)
+
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(extract_to)
+
+    print(f"Extraction complete. Files saved to: {extract_to}")
+
+extract_zip("Repaired_pdbs.zip", save_path)
 
 #########################################
 ### Repairing PDBs for foldx analysis ###
