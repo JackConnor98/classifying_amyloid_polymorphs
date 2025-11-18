@@ -140,5 +140,5 @@ summary_df = (
         })
 )
 
-summary_df.to_csv("Output/PDBs/twist_rise_summary.csv", index = False)
+summary_df.to_csv(os.path.join("Output", "PDBs", "twist_rise_summary.csv"), index = False)
 print(summary_df)

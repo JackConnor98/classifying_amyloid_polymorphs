@@ -191,7 +191,6 @@ for record in alignment:
                     mapping_records.append({
                         "PDB": current_pdb,
                         "pdb_id": pdb_name,
-                        "chain": chain.id,
                         "old_residue_number": old_num,
                         "new_residue_number": new_num
                     })

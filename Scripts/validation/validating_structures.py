@@ -167,7 +167,6 @@ amino_acids = [
 # Removing non-amino acid components
 q_score_df = q_score_df[q_score_df["resname"].isin(amino_acids)]
 
-
 ### Issue - renaming chains during PDB handling means they dont match up to Q-score data ###
 # Need to store the original chain IDs from the PDB files and match them to the Q-score data
 
@@ -191,8 +190,6 @@ pdb_info = pdb_info[["pdb_id", "PDB", "chain", "fibril"]]
 # Merge pdb_info and q_score_df on 'pdb_id' and 'chain'
 q_score_df = pd.merge(pdb_info, q_score_df, on=["PDB", "chain"])
 
-
-
 ######################################################################
 # Correcting residue numbers to match sequence alignment in Q-scores #
 ######################################################################
@@ -201,8 +198,8 @@ q_score_df = pd.merge(pdb_info, q_score_df, on=["PDB", "chain"])
 residue_mapping_df = pd.read_csv(os.path.join("Output", "PDBs", "alignment", "residue_number_mapping.csv"))
 residue_mapping_df = residue_mapping_df.rename(columns={"old_residue_number": "resno"})
 
-# Merging chain mapping with q_score_df
-q_score_df = pd.merge(residue_mapping_df, q_score_df, on=["PDB", "pdb_id", "chain", "resno"])
+
+q_score_df= pd.merge(residue_mapping_df, q_score_df, on=["PDB", "pdb_id", "resno"])
 
 # Replacing published residue numbers with alignment residue numbers
 q_score_df = q_score_df.rename(columns={"resno": "published_resno",
@@ -210,6 +207,7 @@ q_score_df = q_score_df.rename(columns={"resno": "published_resno",
 
 # Saving Q-Score data frame
 q_score_df.to_csv(os.path.join(folder_path, "Q_Scores.csv"), index=False)
+
 
 ##########################################
 ### Filtering Out Poorly Resolved PDBs ###

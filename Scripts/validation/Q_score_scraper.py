@@ -37,8 +37,8 @@ for i in pdb:
     doc = BeautifulSoup(response.text, "html.parser")
 
     try:
-        # Finding the validation data link by text
-        validation_link = doc.find("a", text="Validation (XML - gz)")
+        # Finding the validation data link by searching for the anchor tag with the specific string
+        validation_link = doc.find("a", string="Validation (XML - gz)")
         
         if validation_link:
             validation_url = validation_link.get('href')

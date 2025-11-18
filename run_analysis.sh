@@ -10,7 +10,7 @@ scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Sc
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
@@ -32,11 +32,11 @@ q_score_threshold="automatic"
 penalty=0                     # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD | 3 - Mean + 3SD etc...
 
 # Set a custom cut height for the dendrogram in the RMSD analysis (Reccomened to use 0 for the first run)
-custom_cut_height=0           # 0 - Use the median euclidean distance as the cut height | Any other number will be used as the cut height
+custom_cut_height=0          # 0 - Use the median euclidean distance as the cut height | Any other number will be used as the cut height
 
 # Would you like to exclude poorly resolved single residues from thermodynamic analysis? 
 # 0 - No | 1 - Yes
-remove_poorly_resolved=1
+remove_poorly_resolved=0
 
 # Specify FoldX parameters - if not specified it will use the default [pH = 7.4, temp = 298K, ionstrength = 0.150]
 # The specified parameters will be applied to all structures

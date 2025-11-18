@@ -45,6 +45,9 @@ for index, row in df.iterrows():
     if rise < 3:   
         rise = rise * 2
         twist = twist * 2
+    if rise > 7:
+        rise = rise / 2
+        twist = twist / 2
     print("Twist: ", twist)    
     print("Rise: ", rise, "\n")
 

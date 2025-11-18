@@ -70,7 +70,7 @@ for i in amyloid_names:
                x='PDB ID', 
                y='RMSD (Å)')
         + scale_y_continuous(limits=(0, np.max(x['rmsd']) * 1.05), expand = (0, 0, 0.1, 0), 
-                             breaks=range(0, 999999, 5)) 
+                             breaks=range(0, 9999, 5)) 
         + theme_bw()
         + theme(
             panel_grid_major_y = element_line(color = "grey", size = 0.25, linetype = "dashed"),

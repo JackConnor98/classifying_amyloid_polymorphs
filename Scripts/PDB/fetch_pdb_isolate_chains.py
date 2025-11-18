@@ -48,8 +48,8 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
         pdb_names.append(line.strip())
 
 ### Adding in local structures
+local_dir = "Local"
 if use_local == 1:
-    local_dir = "Local"
     local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
 
     for local in local_pdbs:
@@ -57,7 +57,7 @@ if use_local == 1:
         pdb_names.append(local_name)
 
 # ### For testing single PDBs ###
-# keep = {"7uuq"}
+# keep = {"8a9l"}
 # with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
 #     next(file)  # skip header
 #     pdb_names = [line.strip() for line in file if line.strip() in keep]
@@ -108,15 +108,40 @@ def can_be_in_fibril(i, j, distance_threshold):
                 (current_pdb_df.loc[i, 'y_com'] - current_pdb_df.loc[j, 'y_com'])**2 +
                 (current_pdb_df.loc[i, 'z_com'] - current_pdb_df.loc[j, 'z_com'])**2) < distance_threshold
 
+def clean_pdb_structure(pdb, print_info=True):
+    # Removing non-protein atoms and any UNK residues
+        cmd.remove("not polymer.protein")
+        cmd.remove("resn UNK")
+
+        # Removing modelled dynamic regions (residues outside the fibril core)
+        # Extract the residue ranges for this PDB
+        residue_info = metadata.loc[metadata["PDB ID"] == pdb, "Residues Ordered"]
+
+        if not residue_info.empty:
+            residue_ranges = residue_info.iloc[0].replace(" ", "").split(",")  # split on commas and remove spaces
+
+            # Build a PyMOL selection string for residues to keep
+            keep_selection = " or ".join([f"resi {r}" for r in residue_ranges])
+
+            if print_info:
+                print(f"Keeping residues {', '.join(residue_ranges)} for {pdb}")
+                print(f"Selection string: {keep_selection}")
+
+            # Remove everything outside these ranges
+            cmd.remove(f"not ({keep_selection})")
+        else:
+            if print_info:
+                print(f"No residue range info found for {pdb}, keeping all residues.")
+
+
 # Function to save selected chains as a .pdb file
 def save_selected_chains(chains, filename):        
     
     cmd.reinitialize()
     cmd.load(os.path.join("Output", "PDBs", "published_structure", pdb + ".pdb"))
 
-    # Removing non-protein atoms and any UNK residues
-    cmd.remove("not polymer.protein")
-    cmd.remove("resn UNK")
+    ### Cleaning up the published structure ###
+    clean_pdb_structure(pdb)
 
     # Remove all chains except those in the 'chains' list
     remove_statement = "chain "
@@ -170,6 +195,9 @@ def generate_chain_ids(n):
 ################################
 ### Looping Through Each PDB ###
 ################################
+
+# Load metadata
+metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 
 # Set PyMOL to run without GUI
 pymol.pymol_argv = ['pymol', '-qc']
@@ -287,29 +315,8 @@ for pdb in pdb_names:
     ###########################################
     ### Cleaning up the published structure ###
     ###########################################
-    
-    # Removing non-protein atoms and any UNK residues
-    cmd.remove("not polymer.protein")
-    cmd.remove("resn UNK")
 
-    # Removing modelled dynamic regions (residues outside the fibril core)
-    # Load metadata
-    metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
-
-    # Extract the residue ranges for this PDB
-    residue_info = metadata.loc[metadata["PDB ID"] == pdb, "Residues Ordered"]
-
-    if not residue_info.empty:
-        residue_ranges = residue_info.iloc[0].replace(" ", "").split(",")  # split on commas and remove spaces
-
-        # Build a PyMOL selection string for residues to keep
-        keep_selection = " or ".join([f"resi {r}" for r in residue_ranges])
-        print(f"Keeping residues {', '.join(residue_ranges)} for {pdb}")
-
-        # Remove everything outside these ranges
-        cmd.remove(f"not ({keep_selection})")
-    else:
-        print(f"No residue range info found for {pdb}, keeping all residues.")
+    clean_pdb_structure(pdb, print_info=False)
 
     ###############################################
     ### Creating a dataframe from the .pdb file ###
