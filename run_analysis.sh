@@ -2,25 +2,25 @@
 
 # TODO
 # Calculate intersheet spacing
-# Add support for local PDB structures past RMSD
-# Speed up repairing structures
+# Give option: manually calculated twist and rise | use it only when if EMDB data is not available | only use EMDB data
+# Fix plot size scaling to handle large numbers of PDBs better
 
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
-PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
+PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+validation=1                    # 0 - Do not validate               | 1 - Run validation
+RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+beta_strand=1                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+PNG=1                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
 ### Optional settings ###
 #########################
 
 # Would you like to use Local PDBs?
-use_local=1                    # 0 = No | 1 = Yes
+use_local=0                    # 0 = No | 1 = Yes
 
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1

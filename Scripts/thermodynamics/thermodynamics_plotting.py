@@ -445,6 +445,7 @@ p.save(os.path.join(deltaG_analysis_path, "all_energies_separate_pdb.png"), heig
 # Replace "H1S" and "H2S" with "HIS"
 filtered_df.loc[filtered_df['Code'] == 'H1S', 'Code'] = 'HIS'
 filtered_df.loc[filtered_df['Code'] == 'H2S', 'Code'] = 'HIS'
+filtered_df.loc[filtered_df['Code'] == 'ALY', 'Code'] = 'LYS'
 
 # Count how many PDBs each residue position is found in
 all_pos_counts = filtered_df.groupby('Pos').size().reset_index(name='n')

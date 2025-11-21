@@ -77,16 +77,29 @@ pdb_files = [os.path.join(file_path, file) for file in os.listdir(file_path) if 
 ### Extracting pre-repaired structures ###
 ##########################################
 
-def extract_zip(zip_path, extract_to):
-    # Ensure the destination folder exists
+def extract_matching_pdbs(zip_path, extract_to, pdb_files):
+    # Build a set of expected base names (no extension)
+    expected = {os.path.splitext(os.path.basename(p))[0] for p in pdb_files}
+
+    # Ensure destination folder exists
     os.makedirs(extract_to, exist_ok = True)
 
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
+        for member in zip_ref.namelist():
+            # Only consider .pdb files
+            if not member.lower().endswith(".pdb"):
+                continue
+
+            # Extract the name without extension
+            base = os.path.splitext(os.path.basename(member))[0]
+
+            # Extract only if it matches one of the expected names
+            if base in expected:
+                zip_ref.extract(member, extract_to)
 
     print(f"Extraction complete. Files saved to: {extract_to}")
 
-extract_zip("Repaired_pdbs.zip", save_path)
+extract_matching_pdbs("Repaired_pdbs.zip", save_path, pdb_files)
 
 #########################################
 ### Repairing PDBs for foldx analysis ###
@@ -225,5 +238,12 @@ for folder in os.listdir("."):
 if os.path.exists("rotabase.txt"):
     try:
         os.remove("rotabase.txt")
+    except FileNotFoundError:
+        pass
+
+# Deleting temporary Unrecognized_molecules.txt
+if os.path.exists("Unrecognized_molecules.txt"):
+    try:
+        os.remove("Unrecognized_molecules.txt")
     except FileNotFoundError:
         pass

@@ -57,7 +57,7 @@ if use_local == 1:
         pdb_names.append(local_name)
 
 # ### For testing single PDBs ###
-# keep = {"8a9l"}
+# keep = {"8fnz"}
 # with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
 #     next(file)  # skip header
 #     pdb_names = [line.strip() for line in file if line.strip() in keep]
@@ -129,6 +129,19 @@ def clean_pdb_structure(pdb, print_info=True):
 
             # Remove everything outside these ranges
             cmd.remove(f"not ({keep_selection})")
+            
+            # Handling cases where no residues remain after cleaning
+            remaining_residues = cmd.count_atoms("polymer.protein")
+            if remaining_residues == 0:
+                # reload the original structure
+                cmd.reinitialize()
+                cmd.load(os.path.join("Output", "PDBs", "published_structure", f"{pdb}.pdb"))
+                cmd.remove("not polymer.protein")
+                cmd.remove("resn UNK")
+                
+                if print_info:
+                    print("No residues left after cleaning – reloading original PDB.")
+            
         else:
             if print_info:
                 print(f"No residue range info found for {pdb}, keeping all residues.")
@@ -191,6 +204,13 @@ def generate_chain_ids(n):
         ids.append(name)
     return ids
 
+def sequences_overlap(seq1, seq2, min_overlap = 5):
+                # check whether any window of length >= min_overlap is shared
+                for k in range(len(seq1) - min_overlap + 1):
+                    window = seq1[k:k + min_overlap]
+                    if window in seq2:
+                        return True
+                return False
 
 ################################
 ### Looping Through Each PDB ###
@@ -475,8 +495,7 @@ for pdb in pdb_names:
             closest_chain = row['closest_non_overlapping_chain']
             
             # Check if this pair has already been included in the reverse direction or if they have the same sequence
-            if closest_chain not in mapped_chains and chain_seqs[chain] != chain_seqs[closest_chain]:
-            #if closest_chain not in mapped_chains:
+            if not sequences_overlap(chain_seqs[chain], chain_seqs[closest_chain]) and closest_chain not in mapped_chains:
                 filtered_closest_chains_data.append(row)
                 # Mark both chains as mapped
                 mapped_chains.add(chain)
@@ -640,10 +659,11 @@ for pdb in pdb_names:
 
     print("Fibril Mean Rg = \n", fibril_mean_Rg)
 
-    # Calculate 5% confidence intervals for each fibril's mean Rg
-    fibril_mean_Rg['lower_bound'] = fibril_mean_Rg['mean_Rg'] * 0.95
-    fibril_mean_Rg['upper_bound'] = fibril_mean_Rg['mean_Rg'] * 1.05
-
+    # Calculate 5% confidence intervals for each fibril's mean Rg (capped at 1 Å minimum to avoid very narrow intervals of short chains)
+    mean = fibril_mean_Rg['mean_Rg']
+    fibril_mean_Rg['lower_bound'] = np.minimum(mean * 0.95, mean - 1)
+    fibril_mean_Rg['upper_bound'] = np.maximum(mean * 1.05, mean + 1)
+    
     # Initialize lists to store selected chains
     selected_chains = []
 
