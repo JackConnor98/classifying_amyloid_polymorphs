@@ -42,12 +42,36 @@ for index, row in df.iterrows():
     print("PDB: ", pdb)
     twist = float(df["twist"].iloc[i])
     rise = float(df["rise"].iloc[i])
-    if rise < 3:   
+    
+    # Applying transformations to a complete layer so converting twist and rise to per 4.8A
+    ratio = rise / 4.8
+    
+    if ratio >= 0.2 and ratio < 0.3:
+        rise = rise * 4
+        twist = twist * 4
+    
+    if ratio >= 0.3 and ratio < 0.4:
+        rise = rise * 3
+        twist = twist * 3
+        
+    if ratio >= 0.4 and ratio < 0.6:
         rise = rise * 2
-        twist = twist * 2
-    if rise > 7:
+        twist = twist * 2    
+    
+    if ratio >= 1.5 and ratio <= 2.2:
         rise = rise / 2
         twist = twist / 2
+
+    if ratio >=2.8 and ratio <= 3.2:
+        rise = rise / 3
+        twist = twist / 3
+    
+    # Converting twist to    
+    if twist > 180:
+        twist = twist - 180
+    if twist < -180:
+        twist = twist + 180
+        
     print("Twist: ", twist)    
     print("Rise: ", rise, "\n")
 

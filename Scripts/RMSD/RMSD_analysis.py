@@ -84,7 +84,7 @@ for i in amyloid_names:
     )
 
     # Saving plot
-    p.save(os.path.join(single_pdb_dir, f'{i}_RMSD.png'), width=20, height=8, dpi=300)
+    #p.save(os.path.join(single_pdb_dir, f'{i}_RMSD.png'), width=20, height=8, dpi=300)
 
 ##############################################################################
 
@@ -215,9 +215,11 @@ cluster_groups = cluster_groups.drop(columns=["cluster"])
 cluster_groups.to_csv(os.path.join(data_path, "RMSD_cluster_groups.csv"), index=False)
 
 ### Plotting the dendrogram ###
+num_pdbs = df_wide["pdb_id"].nunique()
+dynamic_width = min(max(12, num_pdbs * 0.1), 25) 
 
 # plot dendrogram
-plt.figure(figsize=(12,6))
+plt.figure(figsize=(dynamic_width, dynamic_width * 0.5))
 d = dendrogram(hc_average, 
                labels=df_wide["pdb_id"].tolist(), 
                leaf_rotation=90, 
@@ -227,6 +229,8 @@ plt.axhline(y=cut_height, color='grey', linestyle='--', linewidth=1.5)
 plt.title("Hierarchical Clustering Dendrogram")
 plt.xlabel("PDB ID")
 plt.ylabel("Distance")
+ax = plt.gca()
+ax.tick_params(axis="x", which="major", pad=0, labelsize = min(max(6, 12 - (num_pdbs*0.05)), 12))
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "RMSD_cluster_dendrogram.png"), dpi=300, bbox_inches="tight")
 
@@ -253,6 +257,11 @@ mean_distance_heatmap = mean_distance_heatmap.sort_values(['pdb_id', 'comparison
 # Saving the mean distance heatmap data to a CSV file
 mean_distance_heatmap.to_csv(os.path.join(data_path, "RMSD_heatmap.csv"), index=False)
 
+# scaling the width based on number of PDBs
+num_pdbs = mean_distance_heatmap["pdb_id"].nunique()
+dynamic_width = min(max(12, num_pdbs * 0.1), 23) + 2 # extra space for legend
+dynamic_height = min(max(12, num_pdbs * 0.1), 23)
+
 # Heatmap plot
 p = (
     ggplot(mean_distance_heatmap, aes(x='comparison', y='pdb_id', fill='mean_distance'))
@@ -266,13 +275,13 @@ p = (
         panel_grid_minor = element_blank(),
         plot_title = element_text(size=20, face="bold", ha="center"),
         axis_title = element_text(size=25, face="bold"),
-        axis_text_x = element_text(size=12, colour="black", angle=90, vjust=0.5, hjust=1),
-        axis_text_y = element_text(size=12, colour="black"),
-        legend_title = element_text(size=20, face="bold"),
-        legend_text = element_text(size=16)
+        axis_text_x = element_text(size = min(max(6, 12 - (num_pdbs*0.05)), 12), colour="black", angle=90, vjust=0.5, hjust=0.5),
+        axis_text_y = element_text(size = min(max(6, 12 - (num_pdbs*0.05)), 12), colour="black"),
+        legend_title = element_text(size=18, face="bold"),
+        legend_text = element_text(size=14)
     )
 )
 
 # Saving plot
-p.save(os.path.join(output_dir, "RMSD_heatmap.png"), width=18, height=15, dpi=300)
+p.save(os.path.join(output_dir, "RMSD_heatmap.png"), width=dynamic_width, height=dynamic_height, dpi=300)
 
