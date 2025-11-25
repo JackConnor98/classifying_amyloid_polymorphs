@@ -77,6 +77,11 @@ def pattern_match(pattern, df, continue_selection=True):
     selected_rows = df[df["Protein"].str.contains(str(pattern), case = False)]
 
     while selected_rows.empty:
+
+        if pattern is None:
+            print("👋 Exiting program. Bye.")
+            return
+        
         print(f"\n🚫 No PDBs found matching the pattern '{pattern}'. Please try again.")
         pattern = get_user_protein_pattern(df, silent=True)
         selected_rows = df[df["Protein"].str.contains(str(pattern), case = False)]
@@ -104,16 +109,43 @@ def pattern_match(pattern, df, continue_selection=True):
         else:
             print("🚫 Invalid input. Please enter 'y' or 'n'.")
 
-def save_data(selected_rows, pdb_names):
+def save_data(EM_rows, EM_names, non_EM_rows, non_EM_names):
 
     # Saving filtered DataFrame to a text file
-        selected_rows.to_csv(os.path.join(output_dir, "selected_pdbs_metadata.txt"), index = False, header = True, sep = "\t")
+    EM_rows.to_csv(os.path.join(output_dir, "selected_pdbs_metadata.txt"), index = False, header = True, sep = "\t")
 
-        # Saving PDB names to a text file
-        with open(os.path.join(output_dir, "pdb_names.txt"), 'w') as file:
-            # write each value to a new line
-            for value in pdb_names:
-                file.write(value + '\n')
+    # Saving PDB names to a text file
+    with open(os.path.join(output_dir, "pdb_names.txt"), 'w') as file:
+        file.write("PDB\n")
+        # write each value to a new line
+        for value in EM_names:
+            file.write(value + '\n')
+    
+    ### Adding Non-EM PDBs to excluded list ###
+    excluded_file = os.path.join(output_dir, "excluded_list.txt")
+    file_exists = os.path.exists(excluded_file) # Check if file exists
+    
+    # Getting a list of pdbs already added to exclusion list to avoid duplicate entries
+    existing_pdbs = set()
+    if file_exists:
+        with open(excluded_file, "r") as f:
+            for line in f:
+                if line.strip() and not line.startswith("PDB ID"):
+                    existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
+        
+    # Open in append mode
+    with open(excluded_file, "a") as f:
+        # Write header only if the file didn't exist before
+        if not file_exists:
+            f.write("PDB ID\tReason\n")
+
+        # Write your excluded entries
+        for pdb in non_EM_names:
+            if pdb not in existing_pdbs:
+                method = non_EM_rows.loc[non_EM_rows["PDB ID"] == pdb, "Method"].values[0]
+                line = f"{pdb}\tNot solved using CryoEM, solved using {method}\n"
+                f.write(line)
+
 
 def main():
     try:
@@ -121,21 +153,25 @@ def main():
         headers, rows = parse_table_data(doc)
         df = pd.DataFrame(rows, columns=headers)
 
-        # Selecting only cryoEM structures
-        cryoEM_df = df[df['Method'].str.contains('cryoEM', case=False)]
-        
         pattern = get_user_protein_pattern(df)
 
         continue_selection = True
 
         while continue_selection and pattern is not None:
 
-            selected_rows, pdb_names, continue_selection = pattern_match(pattern, cryoEM_df)
+            selected_rows, pdb_names, continue_selection = pattern_match(pattern, df)
+
+            non_EM_rows = selected_rows[~selected_rows["Method"].str.contains("cryoEM", case = False, na = False)]
+            non_EM_names = non_EM_rows["PDB ID"].tolist()
+
+            EM_rows = selected_rows[selected_rows['Method'].str.contains('cryoEM', case=False)]
+            EM_names = EM_rows["PDB ID"].tolist()
+
 
             if not continue_selection:
 
                 # Save the selected data
-                save_data(selected_rows, pdb_names)
+                save_data(EM_rows, EM_names, non_EM_rows, non_EM_names)
 
                 break
 

@@ -45,11 +45,17 @@ residues <- residues %>%
                      group = str_split(group, ":")) %>%
               select(pdb, ordered_residues, group)
 
-# Unnesting the split character vectors into seperate rows and removing c("") symbols left over
-residues <- residues %>% 
-              unnest(cols = c(ordered_residues, group)) %>% 
-                mutate(ordered_residues = str_replace_all(ordered_residues, 
-                                                             c("c" = "", "\"" = "", "\\(" = "", "\\)" = "")))
+
+# Unnest ordered_residues if it's a list
+residues <- residues %>%
+  mutate(ordered_residues = map(ordered_residues, ~str_replace_all(.x, c("c" = "", "\"" = "", "\\(" = "", "\\)" = "")))) %>%
+  unnest(ordered_residues)
+
+# Assign a group per continuous region
+residues <- residues %>%
+  group_by(pdb) %>%
+  mutate(group = row_number()) %>%
+  ungroup()
 
 # Splitting each continuous residue group to give a min and max range
 # e.g. 20-96 gets split into two rows; 20 and 96 

@@ -2,12 +2,40 @@
 
 # Importing Packages
 from pyfoldx.structure import Structure
+from pyfoldx.foldx import foldxHandler
+import sys
 import pandas as pd
 import os
 import re
+import shutil
 
 #############################################################################################################################
 
+# Setting FoldX Parameters
+
+# Read command line arguments
+ph = sys.argv[1] if len(sys.argv) > 1 else None
+temp = sys.argv[2] if len(sys.argv) > 2 else None
+ionstrength = sys.argv[3] if len(sys.argv) > 3 else None
+
+# Update parameters only if valid numeric input is provided
+def try_float(value, default):
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+parameters = {
+    "pH": try_float(ph, 7.4),
+    "temperature": try_float(temp, 298),
+    "ionStrength": try_float(ionstrength, 0.150)
+}
+
+print(parameters)
+
+#############################################################################################################################
+
+    
 # Path to unique PDB chains
 file_path = os.path.join("Output", "PDBs", "fibrils_extended")
 
@@ -36,8 +64,7 @@ combined_residue_energy = pd.DataFrame()
 for pdb in pdb_files:
 
     # Extract the pdb_id
-    pdb_id = pdb.split('.')[0]
-    pdb_id = pdb_id.split("/")[-1]
+    pdb_id = os.path.splitext(os.path.basename(pdb))[0]
 
     # Split the string after the last "_"
     pdb_code = re.split(r'_(?!.*_)', pdb_id)[0]
@@ -74,7 +101,7 @@ for pdb in pdb_files:
             stRepaired = Structure(code=pdb_id, path = save_pdb_path)
 
         # Extract all energy values
-        seqRepaired = stRepaired.getResiduesEnergy()
+        seqRepaired = foldxHandler.getResiduesEnergy(stRepaired, consider_waters = False, other_parameters=parameters)
 
     print("\nEnergy values calculated for: " + pdb_id + "\n")
     
@@ -92,3 +119,11 @@ for pdb in pdb_files:
 
 # Saving the combined results
 combined_residue_energy.to_csv(os.path.join("Output", "thermodynamics", "foldx_stability.csv"), index=False)
+
+# Deleting temporary .foldx folder
+for folder in os.listdir("."):
+    if folder.startswith(".foldx") and os.path.isdir(folder):
+        try:
+            shutil.rmtree(folder)
+        except OSError:
+            pass

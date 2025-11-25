@@ -2,10 +2,37 @@
 import pymol
 from pymol import cmd
 import os
+import sys
 import pandas as pd
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+from scipy.sparse.csgraph import maximum_bipartite_matching
+from scipy.sparse import csr_matrix
 import string
+from Bio.SeqUtils import seq1
+
+
+# =============================================================================
+# Read system arguments
+# =============================================================================
+
+if len(sys.argv) > 1: 
+    try: 
+        use_local = int(sys.argv[1]) 
+        
+        if use_local == 1:
+            print("User selected to use local PDBs") 
+        elif use_local == 0:
+            print("User selected to NOT use local PDBs")
+        else:
+            print("Invalid integer given for using local PDBs — defaulting to excluding local PDBs.")
+            
+    except ValueError: 
+        print("Warning: invalid input for use_local — defaulting to excluding local PDBs.") 
+        use_local = 0 
+else: 
+    use_local = 0 
+    print("No option provided for handling local structures, defaulting to excluding local PDBs.")
 
 #############################################################################################################################
 
@@ -19,6 +46,21 @@ with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
     for line in file:
         # Strip any leading/trailing whitespaces and append the name to the list
         pdb_names.append(line.strip())
+
+### Adding in local structures
+local_dir = "Local"
+if use_local == 1:
+    local_pdbs = [f for f in os.listdir(local_dir) if f.endswith(".pdb")]
+
+    for local in local_pdbs:
+        local_name = os.path.splitext(local)[0]
+        pdb_names.append(local_name)
+
+# ### For testing single PDBs ###
+# keep = {"8fnz"}
+# with open(os.path.join("Output", "pdb_names.txt"), "r") as file:
+#     next(file)  # skip header
+#     pdb_names = [line.strip() for line in file if line.strip() in keep]
 
 # Making output directories
 output_dirs = [
@@ -36,6 +78,7 @@ for dir_path in output_dirs:
 com_and_fibril_df = pd.DataFrame()
 com_distances_df = pd.DataFrame()
 min_distance_df = pd.DataFrame()
+chain_mapping_df = pd.DataFrame()
 
 ##########################
 ### Defining functions ###
@@ -65,15 +108,53 @@ def can_be_in_fibril(i, j, distance_threshold):
                 (current_pdb_df.loc[i, 'y_com'] - current_pdb_df.loc[j, 'y_com'])**2 +
                 (current_pdb_df.loc[i, 'z_com'] - current_pdb_df.loc[j, 'z_com'])**2) < distance_threshold
 
+def clean_pdb_structure(pdb, print_info=True):
+    # Removing non-protein atoms and any UNK residues
+        cmd.remove("not polymer.protein")
+        cmd.remove("resn UNK")
+
+        # Removing modelled dynamic regions (residues outside the fibril core)
+        # Extract the residue ranges for this PDB
+        residue_info = metadata.loc[metadata["PDB ID"] == pdb, "Residues Ordered"]
+
+        if not residue_info.empty:
+            residue_ranges = residue_info.iloc[0].replace(" ", "").split(",")  # split on commas and remove spaces
+
+            # Build a PyMOL selection string for residues to keep
+            keep_selection = " or ".join([f"resi {r}" for r in residue_ranges])
+
+            if print_info:
+                print(f"Keeping residues {', '.join(residue_ranges)} for {pdb}")
+                print(f"Selection string: {keep_selection}")
+
+            # Remove everything outside these ranges
+            cmd.remove(f"not ({keep_selection})")
+            
+            # Handling cases where no residues remain after cleaning
+            remaining_residues = cmd.count_atoms("polymer.protein")
+            if remaining_residues == 0:
+                # reload the original structure
+                cmd.reinitialize()
+                cmd.load(os.path.join("Output", "PDBs", "published_structure", f"{pdb}.pdb"))
+                cmd.remove("not polymer.protein")
+                cmd.remove("resn UNK")
+                
+                if print_info:
+                    print("No residues left after cleaning – reloading original PDB.")
+            
+        else:
+            if print_info:
+                print(f"No residue range info found for {pdb}, keeping all residues.")
+
+
 # Function to save selected chains as a .pdb file
 def save_selected_chains(chains, filename):        
     
     cmd.reinitialize()
     cmd.load(os.path.join("Output", "PDBs", "published_structure", pdb + ".pdb"))
 
-    # Removing non-protein atoms and any UNK residues
-    cmd.remove("not polymer.protein")
-    cmd.remove("resn UNK")
+    ### Cleaning up the published structure ###
+    clean_pdb_structure(pdb)
 
     # Remove all chains except those in the 'chains' list
     remove_statement = "chain "
@@ -107,10 +188,36 @@ def select_chain_with_lowest_z_com(fibril):
     fibril_chains = current_pdb_df[current_pdb_df['fibril'] == fibril]
     return fibril_chains.loc[fibril_chains['z_com'].idxmin(), 'chain']
 
+def generate_chain_ids(n):
+    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    base = len(alphabet)
+
+    ids = []
+    for i in range(n):
+        name = ""
+        x = i
+        while True:
+            name = alphabet[x % base] + name
+            x //= base
+            if x == 0:
+                break
+        ids.append(name)
+    return ids
+
+def sequences_overlap(seq1, seq2, min_overlap = 5):
+                # check whether any window of length >= min_overlap is shared
+                for k in range(len(seq1) - min_overlap + 1):
+                    window = seq1[k:k + min_overlap]
+                    if window in seq2:
+                        return True
+                return False
 
 ################################
 ### Looping Through Each PDB ###
 ################################
+
+# Load metadata
+metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 
 # Set PyMOL to run without GUI
 pymol.pymol_argv = ['pymol', '-qc']
@@ -128,8 +235,47 @@ for pdb in pdb_names:
 
     print(f"\nAnalyzing {pdb}")
 
-    # Downloading the PDB file
-    cmd.fetch(pdb)
+    # Determine if this is local or remote
+    local_path = os.path.join(local_dir, f"{pdb}.pdb")
+    if os.path.exists(local_path):
+        print(f"Loading local PDB: {local_path}")
+        cmd.load(local_path)
+
+    else:
+        # Fetch the pdb
+        cmd.fetch(pdb, type="pdb1")
+
+        # check whether PyMOL created the object
+        if not cmd.get_object_list(pdb):
+            print(f"Biological assembly failed for {pdb}, retrying...")
+            cmd.reinitialize()
+            cmd.fetch(pdb)
+            check_states = False
+        else:
+            check_states = True
+
+        ###################################################################################
+
+        # Handling PDBs with multiple states (e.g. 8azs)
+
+        if check_states:
+            # Count how many states (models) are present
+            n_states = cmd.count_states(pdb)
+            if n_states > 1:
+                print(f"{pdb} has {n_states} state(s).")
+                print(f"→ Splitting {n_states} states and recombining into one object...")
+                # Split all states into separate objects
+                cmd.split_states(pdb)
+                # Delete the original object
+                cmd.delete(pdb)
+                # Create an empty object to hold the merged structure
+                cmd.create(pdb, "none")
+                # Loop over each split state and copy it into the main object
+                for i in range(1, n_states + 1):
+                    state_obj = f"{pdb}_{i:04d}"  # e.g. 8AZS_0001
+                    cmd.copy_to(pdb, state_obj)
+                    cmd.delete(state_obj)  # cleanup
+
 
     ###################################################################################
     # Handling poorly formatted chain names within PDBs as it can cause saving conflicts
@@ -139,7 +285,8 @@ for pdb in pdb_names:
     all_chains = sorted(cmd.get_chains(pdb))
 
     # Step 2: Prepare a list of valid final chain IDs (A-Z, a-z, 0-9) = 62 total
-    available_ids = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+    #available_ids = list(string.ascii_uppercase + string.ascii_lowercase + string.digits)
+    available_ids = generate_chain_ids(len(all_chains))
 
     if len(all_chains) > len(available_ids):
         raise ValueError("Too many chains to assign unique single-character chain IDs!")
@@ -158,6 +305,19 @@ for pdb in pdb_names:
     # Step 6: Second renaming pass — temp → final (e.g., '001' → 'A')
     for temp, final in temp_to_final.items():
         cmd.alter(f"chain {temp}", f"chain='{final}'")
+
+    # Recording the chain mapping for this PDB
+    ### Issue - renaming chains during PDB handling means they dont match up to Q-score data ###
+    # Need to store the original chain IDs from the PDB files and match them to the Q-score data
+    pdb_mapping = pd.DataFrame({
+        'PDB': pdb,
+        'published_chain': list(original_to_temp.keys()),
+        'modified_chain': [temp_to_final[original_to_temp[ch]] for ch in original_to_temp]
+    })
+
+    # Append to the master DataFrame
+    chain_mapping_df = pd.concat([chain_mapping_df, pdb_mapping], ignore_index=True)
+
     ###################################################################################
 
     # Save the structure as a .pdb file in the published_structure directory
@@ -166,14 +326,17 @@ for pdb in pdb_names:
 
     # Deleting the .cif files that automatically save
     for filename in os.listdir():
-        if filename.endswith(".cif"):
+        if filename.endswith((".cif", ".pdb1")):
             file_path = os.path.join(filename)
             os.remove(file_path)
 
-    # Removing non-protein atoms and any UNK residues
-    cmd.remove("not polymer.protein")
-    cmd.remove("resn UNK")
+    ###################################################################################
+    
+    ###########################################
+    ### Cleaning up the published structure ###
+    ###########################################
 
+    clean_pdb_structure(pdb, print_info=False)
 
     ###############################################
     ### Creating a dataframe from the .pdb file ###
@@ -182,6 +345,7 @@ for pdb in pdb_names:
     # Initialize lists to store atom information
     chains = []
     residues = []
+    residue_names = []
     atom_numbers = []
     atom_ids = []
     x_coords = []
@@ -193,6 +357,7 @@ for pdb in pdb_names:
     for atom in atom_data.atom:
         chains.append(atom.chain)
         residues.append(atom.resi)
+        residue_names.append(atom.resn)
         atom_numbers.append(atom.index)
         atom_ids.append(atom.name)
         x_coords.append(atom.coord[0])
@@ -203,6 +368,7 @@ for pdb in pdb_names:
     data = {
         "chain": chains,
         "residue": residues,
+        "residue_name": residue_names,
         "atom_number": atom_numbers,
         "atom_id": atom_ids,
         "x": x_coords,
@@ -267,6 +433,14 @@ for pdb in pdb_names:
     # Assigning fragmented monomers to the same chain (Only if needed)
     if len(closest_residue_pair) > 0:
 
+        # Checking if Hungarian agorithm is possible
+        allowed = ~np.isinf(distance_matrix)
+        allowed_sparse = csr_matrix(allowed)
+        matching = maximum_bipartite_matching(allowed_sparse, perm_type = "column")
+        if matching is None or np.any(matching == -1):
+            print("Skipping HK algorithm: no perfect matching possible.")
+            continue
+
         # Apply the Hungarian algorithm
         row_ind, col_ind = linear_sum_assignment(distance_matrix)
 
@@ -287,19 +461,41 @@ for pdb in pdb_names:
         # Create a dataframe containing the closest non-overlapping chain for each chain
         closest_chains_df = pd.DataFrame(closest_chains_data)
 
+        print(closest_chains_df)
+
         # Initialize a set to keep track of chains that have already been mapped
         mapped_chains = set()
 
         # Initialize a list to store the filtered closest chains data
         filtered_closest_chains_data = []
 
+        # Issue - When PDBs are published with incorrect residue numbering, chains with identical sequences but different residue numbers can be fused together
+        # Build a dictionary of sequences for each chain
+        chain_seqs = {}
+        for chain in df['chain'].unique():
+            chain_df = df[df['chain'] == chain].copy()
+
+            # Convert 'residue' to integer, ignoring insertion codes
+            chain_df['residue_number'] = chain_df['residue'].str.extract(r'(\d+)').astype(int)
+
+            # Sort by numeric residue number
+            chain_df.sort_values('residue_number', inplace=True)
+
+            # Keep one row per residue number
+            unique_residues = chain_df.drop_duplicates(subset='residue_number')
+
+            # Build sequence
+            seq = ''.join(seq1(r) for r in unique_residues['residue_name'])
+            chain_seqs[chain] = seq
+            #print(f"{chain} - {seq}")
+
         # Iterate over the closest_chains_df and filter out redundant mappings
         for _, row in closest_chains_df.iterrows():
             chain = row['chain']
             closest_chain = row['closest_non_overlapping_chain']
             
-            # Check if this pair has already been included in the reverse direction
-            if closest_chain not in mapped_chains:
+            # Check if this pair has already been included in the reverse direction or if they have the same sequence
+            if not sequences_overlap(chain_seqs[chain], chain_seqs[closest_chain]) and closest_chain not in mapped_chains:
                 filtered_closest_chains_data.append(row)
                 # Mark both chains as mapped
                 mapped_chains.add(chain)
@@ -322,7 +518,8 @@ for pdb in pdb_names:
             cmd.alter(selection, f"chain = '{row['chain']}'")
 
         # Save the modified structure as a new PDB file
-        cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), pdb)
+        #cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), pdb)
+        cmd.save(os.path.join("Output","PDBs", "published_structure", pdb + ".pdb"), selection='all', state=0)
 
     ##############################
     ### CALCULATING COM AND Rg ###
@@ -389,11 +586,19 @@ for pdb in pdb_names:
         distance_threshold = mean_distance + (mean_distance * 0.5)
 
     else:
-        distance_threshold = 4
+        # No distances to calculate because there's only one chain
+        current_min_distance = pd.DataFrame(columns=['PDB','chain_1','chain_2','distance'])
+
+    # Single layer of 2 protofilaments can have very large mean resulting in recognising only one fibril
+    if num_chains == 2:
+        distance_threshold = 8
+
+    else:
+        distance_threshold = 8
 
     # Single protofilament structures can have a very low mean so setting a minimum value
-    if distance_threshold < 4:
-        distance_threshold = 4
+    if distance_threshold < 8:
+        distance_threshold = 8
 
     # Print the mean distance
     print("\nDistance Threshold = ", distance_threshold)
@@ -454,10 +659,11 @@ for pdb in pdb_names:
 
     print("Fibril Mean Rg = \n", fibril_mean_Rg)
 
-    # Calculate 5% confidence intervals for each fibril's mean Rg
-    fibril_mean_Rg['lower_bound'] = fibril_mean_Rg['mean_Rg'] * 0.95
-    fibril_mean_Rg['upper_bound'] = fibril_mean_Rg['mean_Rg'] * 1.05
-
+    # Calculate 5% confidence intervals for each fibril's mean Rg (capped at 1 Å minimum to avoid very narrow intervals of short chains)
+    mean = fibril_mean_Rg['mean_Rg']
+    fibril_mean_Rg['lower_bound'] = np.minimum(mean * 0.95, mean - 1)
+    fibril_mean_Rg['upper_bound'] = np.maximum(mean * 1.05, mean + 1)
+    
     # Initialize lists to store selected chains
     selected_chains = []
 
@@ -531,18 +737,18 @@ for pdb in pdb_names:
         for fibril in distinct_fibrils:
             selected_chain = select_chain_with_lowest_z_com(fibril)
             selected_chains.append(selected_chain)
-    else:
-        # If no completely distinct fibrils, handle pairs with similar Rg values
-        processed_fibrils = set()
-        for fibril, similar_fibrils in similar_pairs:
-            if fibril not in processed_fibrils:
-                processed_fibrils.add(fibril)
-                for similar_fibril in similar_fibrils:
-                    processed_fibrils.add(similar_fibril)
-                # Select one chain with the lowest z_com from this group of similar fibrils
-                similar_group = [fibril] + similar_fibrils
-                selected_chain = select_chain_with_lowest_z_com(similar_group[0])  # Choose the first one as the representative
-                selected_chains.append(selected_chain)
+    # else:
+    #     # If no completely distinct fibrils, handle pairs with similar Rg values
+    #     processed_fibrils = set()
+    #     for fibril, similar_fibrils in similar_pairs:
+    #         if fibril not in processed_fibrils:
+    #             processed_fibrils.add(fibril)
+    #             for similar_fibril in similar_fibrils:
+    #                 processed_fibrils.add(similar_fibril)
+    #             # Select one chain with the lowest z_com from this group of similar fibrils
+    #             similar_group = [fibril] + similar_fibrils
+    #             selected_chain = select_chain_with_lowest_z_com(similar_group[0])  # Choose the first one as the representative
+    #             selected_chains.append(selected_chain)
 
     # Save the final selected chains, ensuring at least one is saved
     if not selected_chains:
@@ -583,8 +789,9 @@ for pdb in pdb_names:
     # Append current DataFrames to the initialized ones
     com_and_fibril_df = pd.concat([com_and_fibril_df, current_pdb_df], ignore_index=True)
     com_distances_df = pd.concat([com_distances_df, current_distance_df], ignore_index=True)
-    min_distance_df = pd.concat([min_distance_df, current_min_distance], ignore_index=True)
-
+    if not current_min_distance.empty:
+        min_distance_df = pd.concat([min_distance_df, current_min_distance], ignore_index=True)
+    
     ###################
     ### Cleaning up ###
     ###################
@@ -608,6 +815,7 @@ for filename in os.listdir():
 ###################
 ### SAVING DATA ###
 ###################
+chain_mapping_df.to_csv(os.path.join("Output", "PDBs", "chain_mapping.csv"), index = False)
 com_and_fibril_df.to_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"), index = False)
 com_distances_df.to_csv(os.path.join("Output", "PDBs", "COM_distances.csv"), index = False)
 min_distance_df.to_csv(os.path.join("Output", "PDBs", "min_COM_distances.csv"), index = False)

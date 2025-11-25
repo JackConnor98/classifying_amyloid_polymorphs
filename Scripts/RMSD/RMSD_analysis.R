@@ -153,7 +153,7 @@ write.csv(scree_data, file = file.path(data_path, "scree_data.csv"), row.names =
 ggplot(scree_data, aes(x=groups, y=height)) +
        geom_point(size = 1.5) +
        geom_line(linewidth = 0.5) +
-       annotate(geom = "segment", linewidth = 0.5,, colour = "red",
+       annotate(geom = "segment", linewidth = 0.5, colour = "red",
                 x = -Inf, xend = Inf,
                 y = custom_cut_height, yend = custom_cut_height) +
   scale_x_continuous(expand = c(0,0.75), breaks = seq(0,9999,10)) +

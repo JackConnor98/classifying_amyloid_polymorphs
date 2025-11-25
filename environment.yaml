@@ -1,0 +1,25 @@
+name: calypso
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - python = 3.10
+  - pandas
+  - numpy
+  - scipy
+  - networkx
+  - matplotlib
+  - plotnine
+  - bs4
+  - requests
+  - biopython
+  - pip
+  - pymol-open-source
+  - muscle
+
+  - pip:
+      - pyfoldx
+      - customtkinter
+      - PyPDF2

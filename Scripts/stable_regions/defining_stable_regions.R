@@ -52,7 +52,7 @@ tp <- pastecs::turnpoints(mean_at_each_pos$mean_Pos_sliding_window, calc.proba =
 info <- extract(tp, peak = 1, pit = -1)
 type <- info[info != 0]
 
-tp_df <- data.frame(Pos = tp$tppos + (min(mean_at_each_pos$Pos, na.rm = TRUE) - 1), # tppos counts each data point, since my data doesnt start at 1 I need to account for it
+tp_df <- data.frame(Pos = mean_at_each_pos$Pos[tp$tppos], # tppos counts each data point, since my data doesnt start at 1 I need to account for it
                     info = as.character(type),
                     probability = tp$proba)
 

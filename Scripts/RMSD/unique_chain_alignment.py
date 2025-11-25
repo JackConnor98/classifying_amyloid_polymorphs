@@ -25,20 +25,13 @@ pdb_path = os.path.join("Output", "PDBs", "unique_chains")
 pdb_files = [file for file in os.listdir(pdb_path) if file.endswith(".pdb")]
 object_names = [i.split(".")[0] for i in pdb_files]
 
-print(len(pdb_files))
-print(len(object_names))
-
 ### Removing PDBs with poor resolution ###
 # Loading high resolution PDB IDs
-high_res_df = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_pdb_ids.txt"), delim_whitespace=True)
+high_res_df = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_pdb_ids.csv"), sep=",")
 high_res_ids = set(high_res_df['pdb_id'].astype(str))  # Just in case you're storing ints like a noob
 # Filter pdb_files and object_names based on high_res_ids
 filtered = [(f, name) for f, name in zip(pdb_files, object_names) if name in high_res_ids]
 pdb_files, object_names = zip(*filtered) if filtered else ([], [])
-
-print(len(pdb_files))
-print(len(object_names))
-
 
 # Initialise variable to store rmsd abd ca positions for each comparison
 pairwise_rmsd_data = []
@@ -126,8 +119,21 @@ filtered_df = pairwise_rmsd_df[pairwise_rmsd_df["ref_name"] != pairwise_rmsd_df[
 mean_rmsd = filtered_df["rmsd"].mean()
 std_rmsd = filtered_df["rmsd"].std()
 
-# Getting settings for NA penalty defined in run_analysis.sh
-penalty = int(sys.argv[1])
+### Reading in command line arguments ###
+if len(sys.argv) > 1: 
+    try: 
+        penalty = int(sys.argv[1]) 
+        
+        if penalty == 0:
+            print("User has specified no RMSD penalty")
+        else:
+            print(f"RMSD Penalty: mean + {penalty}*SD") 
+    except ValueError: 
+        print("Warning: invalid penalty provided — defaulting to no penalty") 
+        penalty = 0 
+else: 
+    penalty = 0 
+    print("No penalty provided, defaulting to no penalty")
 
 if penalty == 0:
     na_penalty = "NA"  # No penalty
@@ -201,6 +207,5 @@ plt.xlabel('rmsd')
 plt.ylabel('rmsd_with_na')
 plt.title('RMSD vs RMSD with NA penalty')
 plt.grid(True)
-plt.show()
 
 plt.savefig(os.path.join(save_path, "rmsd_and_na_penalty.png"), dpi=300, bbox_inches='tight')
