@@ -6,7 +6,7 @@
 # Fix plot size scaling to handle large numbers of PDBs better
 
 # Setting Run Parameters
-scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
+scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=1                    # 0 - Do not validate               | 1 - Run validation
 RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
