@@ -2,8 +2,9 @@
 
 # TODO
 # Calculate intersheet spacing
-# Give option: manually calculated twist and rise | use it only when if EMDB data is not available | only use EMDB data
+# Give option: manually calculate twist and rise only when EMDB data is not available
 # Fix plot size scaling to handle large numbers of PDBs better
+# Test Local PDB functionality fully
 
 # Setting Run Parameters
 scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
@@ -33,6 +34,12 @@ penalty=0                     # 0 - No penalty | 1 - Mean + 1SD | 2 - Mean + 2SD
 
 # Set a custom cut height for the dendrogram in the RMSD analysis (Reccomened to use 0 for the first run)
 custom_cut_height=0          # 0 - Use the median euclidean distance as the cut height | Any other number will be used as the cut height
+
+# Would you like to use publised twist and rise values or calulate them locally?
+twist_rise_source=0     # 0 - Use EMDB values where available | 1 - Calculate locally
+
+# Specify the number of layers to extend the fibril to (default is 10)
+num_layers=10
 
 # Would you like to exclude poorly resolved single residues from thermodynamic analysis? 
 # 0 - No | 1 - Yes
@@ -120,8 +127,11 @@ if [ $thermodynamics -eq 1 ]; then
    # Getting fibril twist and rise
    python Scripts/thermodynamics/EMDB_scraper.py 
 
+   # Calculating twist and rise locally
+    python Scripts/thermodynamics/calculate_twist_rise.py
+
    # Extend the asymetric units to a layer depth of 10 chains
-   python Scripts/thermodynamics/extend_fibril_layers.py
+   python Scripts/thermodynamics/extend_fibril_layers.py $twist_rise_source $num_layers
 
    # Calculate the FoldX per residue stability
    python Scripts/thermodynamics/foldx_analysis_multithread.py $ph $temp $ionstrength $num_processes

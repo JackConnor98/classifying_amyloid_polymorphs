@@ -33,6 +33,8 @@ def run_pipeline():
     q_score_threshold= safe(q_score_threshold_var.get(), "automatic")
     penalty = safe(penalty_var.get(), "0")
     custom_cut_height = safe(custom_cut_height_var.get(), "0")
+    twist_rise_source = safe(twist_rise_source_var.get())
+    num_layers = safe(num_layers_var.get())
     remove_poorly_resolved = str(remove_poorly_resolved_var.get())
     ph = safe(ph_var.get(), "7.4")
     temp = safe(temp_var.get(), "298")
@@ -69,7 +71,11 @@ def run_pipeline():
 
         if thermodynamics == 1:
             subprocess.run(["python", "Scripts/thermodynamics/EMDB_scraper.py"], check = True)
-            subprocess.run(["python", "Scripts/thermodynamics/extend_fibril_layers.py"], check = True)
+            subprocess.run(["python", "Scripts/thermodynamics/calculate_twist_and_rise.py"], check = True)
+            subprocess.run(["python", "Scripts/thermodynamics/extend_fibril_layers.py", 
+                            twist_rise_source, 
+                            num_layers
+                            ], check = True)
             subprocess.run([
                 "python",
                 "Scripts/thermodynamics/foldx_analysis_multithread.py",
@@ -251,11 +257,25 @@ thermo_frame = section("5. Thermodynamics")
 thermodynamics_var = ctk.IntVar(value = 1)
 make_checkbox(thermo_frame, "Run thermodynamic analysis (FoldX)", thermodynamics_var)
 
+twist_rise_source_var = ctk.IntVar(value = 0)
+num_layers_var = ctk.IntVar(value = 10)
+
+twist_frame = ctk.CTkFrame(thermo_frame)
+twist_frame.pack(anchor = "w", pady = 2)
+make_label_new_line(twist_frame, "Would you like to use publised twist and rise values or calulate them locally?")
+make_radiobutton(twist_frame, "Use EMDB values where available", twist_rise_source_var, value = 0)
+make_radiobutton(twist_frame, "Calculate locally", twist_rise_source_var, value = 1)
+
+layers_frame = ctk.CTkFrame(thermo_frame)
+layers_frame.pack(fill = "x", pady = 4)
+make_label_new_line(layers_frame, "Specify the number of layers to extend the fibril to (default is 10)")
+make_entry(layers_frame, num_layers_var, width = 50)
+
 remove_poorly_resolved_var = ctk.IntVar(value = 1)
 
 radio_frame = ctk.CTkFrame(thermo_frame)
 radio_frame.pack(anchor = "w", pady = 2)
-make_label_new_line(thermo_frame, "Remove individual poorly resolved residues from otherwise well resolved PDBs?")
+make_label_new_line(radio_frame, "Remove individual poorly resolved residues from otherwise well resolved PDBs?")
 make_radiobutton(radio_frame, "Yes", remove_poorly_resolved_var, value = 1)
 make_radiobutton(radio_frame, "No", remove_poorly_resolved_var, value = 0)
 

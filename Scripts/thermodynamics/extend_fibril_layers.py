@@ -1,9 +1,9 @@
 import pymol
-# Import PyMOL modules
 from pymol import cmd
 import os
 import pandas as pd
 import numpy as np
+import sys
 
 #############################################################################################################################
 
@@ -16,11 +16,48 @@ if not os.path.exists(save_path):
 
 #############################################################################################################################
 
-# importing EMD_data
-file_path = os.path.join("Output", "emdb_data.txt")
+# Read command line arguments
+if len(sys.argv) > 1: 
+    try: 
+        twist_rise_source = int(sys.argv[1]) 
+    except ValueError: 
+        print("Warning: invalid argument — defaulting to published twist and rise values from EMDB") 
+        twist_rise_source = 0 
+    if twist_rise_source not in [0, 1]: 
+        print("Warning: invalid argument — defaulting to published twist and rise values from EMDB") 
+        twist_rise_source = 0
+else: 
+    twist_rise_source = 0 
+    print("No input given, defaulting to published twist and rise values from EMDB")
 
-# Read the text file into a DataFrame
-df = pd.read_csv(file_path, sep="\t") 
+
+if len(sys.argv) > 2: 
+    try: 
+        num_layers = int(sys.argv[2]) 
+    except ValueError: 
+        print("Warning: invalid argument — defaulting to 10 layers") 
+        num_layers = 10 
+else: 
+    num_layers = 10 
+    print("No input given, defaulting to 10 layers")
+
+#############################################################################################################################
+
+if twist_rise_source == 1:
+
+    # importing local twist and rise data
+    file_path = os.path.join("Output", "PDBs", "twist_rise_summary.csv")
+
+    # Read the text file into a DataFrame
+    df = pd.read_csv(file_path)
+
+else:
+    # importing EMD_data
+    file_path = os.path.join("Output", "emdb_data.txt")
+
+    # Read the text file into a DataFrame
+    df = pd.read_csv(file_path, sep="\t") 
+
 
 # Setting the path to the PDB asymetric units
 pdb_path = os.path.join("Output", "PDBs", "asymetric_unit")
@@ -90,13 +127,13 @@ for index, row in df.iterrows():
 
         print("Loaded PDB file: ", pdb, "\n")
 
-        # Duplicating the asymetric unit 9 times to create a layer depth of 10 chains
+        # Duplicating the asymetric unit num_layers - 1 times to create a layer depth of num_layers
 
         # Duplicating the monomer
         cmd.create("tmp", pdb)
 
         # Creating new layers
-        for i in range(0, 9):
+        for i in range(0, (num_layers - 1)):
 
             # Moving the monomer down by 4.8A
             cmd.translate([0, 0, -rise], "tmp")
@@ -109,6 +146,18 @@ for index, row in df.iterrows():
 
         # Deleting  the temporary dublicated object
         cmd.delete("tmp")
+
+        # --- Fix chain IDs ---
+        valid_chains = list("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+        current_chains = cmd.get_chains(pdb)
+
+        for idx, chain in enumerate(current_chains):
+            if idx < len(valid_chains):
+                new_chain = valid_chains[idx]
+                cmd.alter(f"{pdb} and chain {chain}", f"chain='{new_chain}'")
+            else:
+                print(f"Warning: too many chains for PDB format in {pdb}")
+                break
 
         # Saving the extended fibril structure
         pymol.cmd.save(os.path.join(save_path, pdb + ".pdb"))
