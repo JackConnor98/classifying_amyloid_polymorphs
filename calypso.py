@@ -99,14 +99,10 @@ def run_pipeline():
         if png == 1:
             subprocess.run([
                 "python",
-                "Scripts/PNG/asymmetric_unit_png_generator.py",
+                "Scripts/PNG/generate_pngs.py",
                 png_colouring,
                 png_palette
             ], check = True)
-            subprocess.run(["python", "Scripts/PNG/asymmetric_unit_figure_maker.py"], check = True)
-            subprocess.run(["python", "Scripts/PNG/stable_region_colouring.py"], check = True)
-            subprocess.run(["python", "Scripts/PNG/stable_region_png_maker.py"], check = True)
-            subprocess.run(["python", "Scripts/PNG/cluster_group_and_stable_regions_figure.py"], check = True)
             subprocess.run(["python", "Scripts/PNG/polarity_map_scraper.py"], check = True)
             selected_jobs.append("7.PNG")
 
@@ -370,6 +366,7 @@ make_label_new_line(bullet_frame, text = "0 = Single Colour")
 make_label_new_line(bullet_frame, text = "1 = Protein Domain (Tau, Asyn or A-beta Only)")
 make_label_new_line(bullet_frame, text = "2 = Protofilament")
 make_label_new_line(bullet_frame, text = "3 = Amyloid Fold")
+make_label_new_line(bullet_frame, text = "4 = Stable Regions")
 
 
 row6 = ctk.CTkFrame(png_frame)

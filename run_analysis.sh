@@ -7,14 +7,14 @@
 # Test Local PDB functionality fully
 
 # Setting Run Parameters
-scrape=1                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=1                    # 0 - Do not validate               | 1 - Run validation
-RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
+PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+validation=0                    # 0 - Do not validate               | 1 - Run validation
+RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
-stable_regions=1                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
-beta_strand=1                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
-PNG=1                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
+stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
+beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
+PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
 
 #########################
 ### Optional settings ###
@@ -128,7 +128,7 @@ if [ $thermodynamics -eq 1 ]; then
    python Scripts/thermodynamics/EMDB_scraper.py 
 
    # Calculating twist and rise locally
-    python Scripts/thermodynamics/calculate_twist_rise.py
+   python Scripts/thermodynamics/calculate_twist_rise.py
 
    # Extend the asymetric units to a layer depth of 10 chains
    python Scripts/thermodynamics/extend_fibril_layers.py $twist_rise_source $num_layers
@@ -157,18 +157,10 @@ fi
 
 if [ $PNG -eq 1 ]; then
 
-    # Asymmetric Unit Figure
-    python Scripts/PNG/asymmetric_unit_png_generator.py $png_colouring $png_palette
-    python Scripts/PNG/asymmetric_unit_figure_maker.py
-
-    # Colouring asymetric units by stable regions
-    python Scripts/PNG/stable_region_colouring.py
-
-    # Creating a figure showing each structure with coloured stable regions and grouped by RMSD
-    python Scripts/PNG/stable_region_png_maker.py
-    python Scripts/PNG/cluster_group_and_stable_regions_figure.py
-
-    # Scrapint the polarity maps from Amyloid Atlas
+    # Generate PNGs
+    python Scripts/PNG/generate_pngs.py $png_colouring $png_palette
+    
+    # Scrape the polarity maps from Amyloid Atlas
     python Scripts/PNG/polarity_map_scraper.py
 
 fi

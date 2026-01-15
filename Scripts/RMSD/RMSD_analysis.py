@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 import numpy as np
+import re
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, dendrogram, leaves_list, fcluster
 import matplotlib.pyplot as plt
@@ -233,6 +234,113 @@ ax = plt.gca()
 ax.tick_params(axis="x", which="major", pad=0, labelsize = min(max(6, 12 - (num_pdbs*0.05)), 12))
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "RMSD_cluster_dendrogram.png"), dpi=300, bbox_inches="tight")
+
+
+
+
+
+
+
+
+
+# --- Dendrogram plotting with coloured x-ticks ---
+
+
+# 1. Load metadata with PDB + fibril origins
+selected = pd.read_csv("Output/selected_pdbs_metadata.csv")
+
+# Rename to match Python conventions
+selected = selected.rename(columns = {"PDB ID": "PDB"})
+
+# 2. Load PDB to pdb_id mapping and drop duplicates
+pdb_map = pd.read_csv("Output/PDBs/COM_and_fibril.csv")
+
+# Keep only unique combinations
+pdb_map = pdb_map[["PDB", "pdb_id"]].drop_duplicates()
+
+# 3. Define helper function to classify condition
+def classify_condition(text):
+    if pd.isna(text):
+        return "other"
+    
+    ex_vivo = bool(re.search("extracted|patient|case|atrophy", text, flags = re.IGNORECASE))
+    seeded = bool(re.search("seed|seeded", text, flags = re.IGNORECASE))
+    
+    if ex_vivo and seeded:
+        return "Seeded From Ex Vivo"
+    if ex_vivo:
+        return "Ex Vivo"
+    if not ex_vivo and seeded:
+        return "Seeded From In Vitro"
+    return "In Vitro"
+
+# 4. Apply classification logic
+selected["condition"] = selected["Fibril Origins"].apply(classify_condition)
+
+
+# 5. Keep only columns of interest
+metadata = selected[["PDB", "condition"]]
+
+# 6. Merge metadata onto the PDB to pdb_id lookup
+pdb_source = pdb_map.merge(metadata, on = "PDB", how = "left")
+
+# Make sure order follows your dendrogram labels
+pdb_source = pdb_source.set_index("pdb_id").loc[pdb_id_labels].reset_index()
+
+
+source_colour_palette = ["black", "blue", "darkgreen", "red"]
+fibril_sources = ["In Vitro", "Ex Vivo", "Seeded From In Vitro", "Seeded From Ex Vivo"]
+fibril_source_colour = {src: col for src, col in zip(fibril_sources, source_colour_palette)}
+
+pdb_source["colour"] = pdb_source["condition"].map(fibril_source_colour)
+pdb_source = pdb_source.set_index("pdb_id").loc[pdb_id_labels].reset_index()
+
+tick_colours_ordered = pdb_source["colour"].tolist()
+
+# Dynamic figure size
+num_pdbs = df_wide["pdb_id"].nunique()
+dynamic_width = min(max(12, num_pdbs * 0.1), 25) 
+
+plt.figure(figsize=(dynamic_width, dynamic_width * 0.5))
+
+d = dendrogram(
+    hc_average,
+    labels=df_wide["pdb_id"].tolist(),
+    leaf_rotation=90,
+    color_threshold=cut_height,
+    above_threshold_color="black"
+)
+
+plt.axhline(y=cut_height, color="grey", linestyle="--", linewidth=1.5)
+plt.title("Hierarchical Clustering Dendrogram")
+plt.xlabel("PDB ID")
+plt.ylabel("Distance")
+
+ax = plt.gca()
+ax.tick_params(axis="x", which="major", pad=0, labelsize=min(max(6, 12 - (num_pdbs * 0.05)), 12))
+
+# Apply colours to each tick label
+for tick, colour in zip(ax.get_xticklabels(), tick_colours_ordered):
+    tick.set_color(colour)
+
+plt.tight_layout()
+plt.savefig(os.path.join(output_dir, "RMSD_cluster_dendrogram_coloured.png"), dpi=300, bbox_inches="tight")
+
+# Save a colour key
+colour_key = pdb_source[["condition", "colour"]].drop_duplicates()
+colour_key.to_csv(os.path.join(output_dir, "dendrogram_ticks_colour_key.csv"), index=False)
+
+
+
+
+
+
+
+
+
+
+
+
 
 ##############################################################################
 
