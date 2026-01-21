@@ -10,8 +10,8 @@
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
 PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
 validation=0                    # 0 - Do not validate               | 1 - Run validation
-RMSD=0                          # 0 - Do not calculate              | 1 - Run RMSD
-thermodynamics=1                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
+RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
+thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
 beta_strand=0                   # 0 - Do not analyse Beta-Sheet     | 1 - Run Beta-Sheet
 PNG=0                           # 0 - Do not generate PNGs          | 1 - Generate PNGs
@@ -21,7 +21,7 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 #########################
 
 # Would you like to use Local PDBs?
-use_local=0                    # 0 = No | 1 = Yes
+use_local=1                    # 0 = No | 1 = Yes
 
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1
@@ -70,6 +70,7 @@ min_length=NA
 # 1 = Protein Domain
 # 2 = Protofilament
 # 3 = Amyloid Fold
+# 4 = Stablde Regions
 png_colouring=0
 # If you selected Single Colour (0) Protofilament (2) or Amyloid Fold (3) you can enter a list of colours to use otherwise it will use a default palette
 png_palette="tv_blue, tv_red, tv_green, tv_orange"

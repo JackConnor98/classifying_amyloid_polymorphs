@@ -79,12 +79,13 @@ pdb_files = [os.path.join(file_path, file) for file in os.listdir(file_path) if 
 
 def extract_matching_pdbs(zip_path, extract_to, pdb_files):
     # Build a set of expected base names (no extension)
-    expected = {os.path.splitext(os.path.basename(p))[0] for p in pdb_files}
+    expected = {f"{os.path.splitext(os.path.basename(p))[0]}_repaired" for p in pdb_files}
 
     # Ensure destination folder exists
     os.makedirs(extract_to, exist_ok = True)
 
     with zipfile.ZipFile(zip_path, "r") as zip_ref:
+
         for member in zip_ref.namelist():
             # Only consider .pdb files
             if not member.lower().endswith(".pdb"):
@@ -95,6 +96,7 @@ def extract_matching_pdbs(zip_path, extract_to, pdb_files):
 
             # Extract only if it matches one of the expected names
             if base in expected:
+                print(f"Extracting: {member}")
                 zip_ref.extract(member, extract_to)
 
     print(f"Extraction complete. Files saved to: {extract_to}")
