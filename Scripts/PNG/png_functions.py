@@ -11,14 +11,12 @@ import numpy as np
 def color_white():
     cmd.color("white")
 
-
 def validate_color(color):
     valid_colors = {name for name, _ in cmd.get_color_indices()}
     if color not in valid_colors:
         print(f"Warning: '{color}' is not a recognised PyMOL color. Reverting to 'white'.")
         return "white"
     return color
-
 
 def set_coloring(png_coloring, user_palette, metadata=None, fibril_info=None, stable_regions=None):
     """Return a `color_residues(object_name, pdb_name)` callable based on settings.
@@ -169,7 +167,6 @@ def set_coloring(png_coloring, user_palette, metadata=None, fibril_info=None, st
 
     # Fallback
     return _noop
-
 
 def process_pdb_directory(pdb_path, save_path, color_residues, apply_transparency=False, fibril_info=None, reference_pdb=0):
     """Process all PDBs in `pdb_path`, saving PNGs to `save_path`.
@@ -327,7 +324,6 @@ def process_pdb_directory(pdb_path, save_path, color_residues, apply_transparenc
             # Clear the current object for the next iteration
             cmd.delete(object_name)
 
-
 def merge_pngs(png_dir):
     png_files = [file for file in os.listdir(png_dir) if file.endswith(".png")]
     png_files.sort()
@@ -368,7 +364,6 @@ def merge_pngs(png_dir):
             y_offset += img_height + text_height
 
     combined_image.save(os.path.join(png_dir, "combined_grid.jpg"))
-
 
 def create_grouped_png_grid(
     pdb_path,

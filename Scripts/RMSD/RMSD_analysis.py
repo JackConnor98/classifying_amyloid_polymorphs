@@ -219,8 +219,34 @@ cluster_groups.to_csv(os.path.join(data_path, "RMSD_cluster_groups.csv"), index=
 num_pdbs = df_wide["pdb_id"].nunique()
 dynamic_width = min(max(12, num_pdbs * 0.1), 25) 
 
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+
+import matplotlib.colors as mcolors
+from matplotlib import rcParams
+from cycler import cycler
+
+# Load the qualitative palettes
+set1 = plt.get_cmap("Set1")
+dark2 = plt.get_cmap("Dark2")
+# Convert to hex
+set1_colours = [mcolors.to_hex(set1(i)) for i in range(set1.N)]
+dark2_colours = [mcolors.to_hex(dark2(i)) for i in range(dark2.N)]
+# Combine them
+base_colours = set1_colours + dark2_colours
+
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+
 # plot dendrogram
 plt.figure(figsize=(dynamic_width, dynamic_width * 0.5))
+rcParams['axes.prop_cycle'] = cycler(color=['#000000'] + base_colours)
 d = dendrogram(hc_average, 
                labels=df_wide["pdb_id"].tolist(), 
                leaf_rotation=90, 
@@ -234,13 +260,6 @@ ax = plt.gca()
 ax.tick_params(axis="x", which="major", pad=0, labelsize = min(max(6, 12 - (num_pdbs*0.05)), 12))
 plt.tight_layout()
 plt.savefig(os.path.join(output_dir, "RMSD_cluster_dendrogram.png"), dpi=300, bbox_inches="tight")
-
-
-
-
-
-
-
 
 
 # --- Dendrogram plotting with coloured x-ticks ---
@@ -329,16 +348,6 @@ plt.savefig(os.path.join(output_dir, "RMSD_cluster_dendrogram_coloured.png"), dp
 # Save a colour key
 colour_key = pdb_source[["condition", "colour"]].drop_duplicates()
 colour_key.to_csv(os.path.join(output_dir, "dendrogram_ticks_colour_key.csv"), index=False)
-
-
-
-
-
-
-
-
-
-
 
 
 

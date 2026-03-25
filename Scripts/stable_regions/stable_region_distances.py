@@ -131,11 +131,16 @@ def stable_region_distance(CA_filtered, stable_regions, selected_pdb):
     ]
 
     # Find the minimum distance for each pair of regions per fibril
-    min_distances = (
-        stable_region_CA_dist
-        .groupby(["region1", "region2", "which_fibril", "pdb_id"], as_index=False)
-        .agg(min_distance=("distance", "min"))
-    )
+    # min_distances = (
+    #     stable_region_CA_dist
+    #     .groupby(["region1", "region2", "which_fibril", "pdb_id"], as_index=False)
+    #     .agg(min_distance=("distance", "min"))
+    # )
+    
+    group_cols = ["region1", "region2", "which_fibril", "pdb_id"]
+    idx = (stable_region_CA_dist.groupby(group_cols)["distance"].idxmin())
+    min_distances = stable_region_CA_dist.loc[idx].copy()
+    min_distances = min_distances.rename(columns = {"distance": "min_distance"})
 
     # Add PDB name column
     min_distances["pdb"] = selected_pdb
@@ -149,6 +154,7 @@ def stable_region_distance(CA_filtered, stable_regions, selected_pdb):
 parser = PDBParser(QUIET=True)
 
 # Initialising dataframe
+all_distance_data = pd.DataFrame()
 combined_residue_distance = pd.DataFrame()
 combined_region_distance = pd.DataFrame()
 
@@ -171,6 +177,7 @@ for file in pdb_files_filtered:
             atom_data.append({
                 "PDB": selected_pdb,
                 "fibril": atom.bfactor,   # fibril number is stored as the B-factor
+                "chain": parent.get_parent().id,
                 "resno": parent.get_id()[1],
                 "x": atom.coord[0],
                 "y": atom.coord[1],
@@ -192,14 +199,30 @@ for file in pdb_files_filtered:
     n = len(df)
     CA_distance_df = pd.DataFrame({
         "resno1": np.repeat(df["resno"].values, n),
+        "chain1": np.repeat(df["chain"].values, n),
         "fibril1": np.repeat(df["fibril"].values, n),
         "polymorph1": np.repeat(df["polymorph"].values, n),
         "resno2": np.tile(df["resno"].values, n),
+        "chain2": np.tile(df["chain"].values, n),
         "fibril2": np.tile(df["fibril"].values, n),
         "polymorph2": np.tile(df["polymorph"].values, n),
         "distance": CA_distances.flatten()
     })
-
+    
+    # Adding pdb_id
+    if len(CA_distance_df) > 0:
+            current_pdb_info = fibril_df.query("PDB == @selected_pdb")
+            CA_distance_df["pdb_id"] = current_pdb_info["pdb_id"].iloc[0]
+    
+    # Add which_fibril column
+    CA_distance_df["which_fibril"] = np.where(
+        CA_distance_df["fibril1"] == CA_distance_df["fibril2"],
+        "same", "different"
+    )
+    
+    # Addinng current distances to all distance data
+    all_distance_data = pd.concat([all_distance_data, CA_distance_df], ignore_index=True)
+    
     # Remove self-comparisons and near neighbours on same fibril
     CA_distance_df = CA_distance_df[
         ~((CA_distance_df["resno1"] == CA_distance_df["resno2"]) &
@@ -209,12 +232,6 @@ for file in pdb_files_filtered:
         ~((abs(CA_distance_df["resno1"] - CA_distance_df["resno2"]) <= 3) &
           (CA_distance_df["fibril1"] == CA_distance_df["fibril2"]))
     ]
-
-    # Add which_fibril column
-    CA_distance_df["which_fibril"] = np.where(
-        CA_distance_df["fibril1"] == CA_distance_df["fibril2"],
-        "same", "different"
-    )
 
     # --- If only one polymorph ---
     if polymorph_count == 1:
@@ -229,9 +246,9 @@ for file in pdb_files_filtered:
             .drop(columns=["min_distance", "fibril1", "fibril2"])
         )
 
-        if len(CA_filtered) > 0:
-            current_pdb_info = fibril_df.query("PDB == @selected_pdb")
-            CA_filtered["pdb_id"] = current_pdb_info["pdb_id"].iloc[0]
+        # if len(CA_filtered) > 0:
+        #     current_pdb_info = fibril_df.query("PDB == @selected_pdb")
+        #     CA_filtered["pdb_id"] = current_pdb_info["pdb_id"].iloc[0]
 
         combined_residue_distance = pd.concat([combined_residue_distance, CA_filtered], ignore_index=True)
 
@@ -268,6 +285,9 @@ for file in pdb_files_filtered:
             combined_residue_distance = pd.concat([combined_residue_distance, CA_filtered], ignore_index=True)
             min_region_distances = stable_region_distance(CA_filtered, stable_regions, selected_pdb)
             combined_region_distance = pd.concat([combined_region_distance, min_region_distances], ignore_index=True)
+
+# Saving all_distance_data
+all_distance_data.to_csv(os.path.join(residue_dir, "unfiltered_residue_distances.csv"), index = False)
 
 # Saving combined_residue_distances
 combined_residue_distance.to_csv(os.path.join(residue_dir, "residue_distances.csv"), index = False)

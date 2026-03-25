@@ -8,8 +8,8 @@
 
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=0                    # 0 - Do not validate               | 1 - Run validation
+PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+validation=1                    # 0 - Do not validate               | 1 - Run validation
 RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
@@ -21,7 +21,7 @@ PNG=0                           # 0 - Do not generate PNGs          | 1 - Genera
 #########################
 
 # Would you like to use Local PDBs?
-use_local=1                    # 0 = No | 1 = Yes
+use_local=0                    # 0 = No | 1 = Yes
 
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1
