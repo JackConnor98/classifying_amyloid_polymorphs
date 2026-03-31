@@ -36,6 +36,7 @@ df = pd.read_csv(os.path.join(data_path, "pairwise_rmsd.csv"), sep=",")
 high_resolution_residues = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_residues.csv"), sep=",")
 
 
+
 ### Removing low resolution PDBs from df ###
 
 amyloid_names = high_resolution_residues['pdb_id'].astype(str).unique()

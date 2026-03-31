@@ -655,5 +655,9 @@ if __name__ == "__main__":
     #pdb_file = os.path.join("Output", "PDBs", "asymetric_unit", "9gz6_asym_unit.pdb")
     #pdb_file = "8awt"
     
-    plot_pdb_coordinates(pdb_file, outfile="Output/PNG/test.png", label="number", rescol="type", 
-                         draw_contacts=False, threshold=10)
+    plot_pdb_coordinates(pdb_file, 
+                         outfile="Output/test.png", 
+                         label="number", # Residue number = "number", One letter code = "letter" 
+                         rescol="type", # "type" colour by AA
+                         draw_contacts=True,
+                         threshold=10) # in Angstroms as the maximum contact difference

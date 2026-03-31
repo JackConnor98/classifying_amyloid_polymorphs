@@ -49,6 +49,7 @@ metadata = pd.read_csv(os.path.join("Output", "selected_pdbs_metadata.csv"))
 chain_fibril = pd.read_csv(os.path.join("Output", "PDBs", "fibrils_extended", "chain_fibril.csv"))
 exterior_chains = pd.read_csv(os.path.join("Output", "PDBs", "fibrils_extended", "exterior_chains.csv"))
 com_and_fibril = pd.read_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"))
+high_resolution_pdb_ids = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_pdb_ids.csv"))
 high_resolution_residues = pd.read_csv(os.path.join("Output", "Validation", "high_resolution_residues.csv"))
 cluster_groups = pd.read_csv(os.path.join("Output", "RMSD", "data", "RMSD_cluster_groups.csv"))
 
@@ -147,7 +148,7 @@ if remove_poorly_resolved == 0:
     Removes entire PDBs with a mean Q-score below the threshold
     '''
     # Extracting high resolution pdb_ids
-    high_resolution_PDBs = high_resolution_residues["pdb_id"].unique()
+    high_resolution_PDBs = high_resolution_pdb_ids["pdb_id"].unique()
     
     # Keeping only well resolved pdb_ids
     filtered_df = filtered_df[filtered_df["pdb_id"].isin(high_resolution_PDBs)]

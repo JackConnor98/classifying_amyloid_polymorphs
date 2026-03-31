@@ -5,11 +5,12 @@
 # Give option: manually calculate twist and rise only when EMDB data is not available
 # Fix plot size scaling to handle large numbers of PDBs better
 # Test Local PDB functionality fully
+# Add colour legend to dendrogram 
 
 # Setting Run Parameters
 scrape=0                        # 0 - Don't Web Scrape              | 1 - Web Scrape Amyloid Atlas
-PDB=1                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
-validation=1                    # 0 - Do not validate               | 1 - Run validation
+PDB=0                           # 0 - Don't Analyse PDBs            | 1 - Analyse PDBs
+validation=0                    # 0 - Do not validate               | 1 - Run validation
 RMSD=1                          # 0 - Do not calculate              | 1 - Run RMSD
 thermodynamics=0                # 0 - Do not run thermodynamics     | 1 - Run thermodynamic analysis
 stable_regions=0                # 0 - Do not analyse stable regions | 1 - Run stable region analysis
@@ -26,7 +27,9 @@ use_local=0                    # 0 = No | 1 = Yes
 # Web scraping: would you like to use the GUI (1) or command line (0) version
 scrape_version=1
 
-# Specify the Q-score threshold [0-1] (default is set to the mean - SD Q-score accross all PDBs)
+# Specify the Q-score threshold [0-1]
+# "automatic" will use mean - SD Q-score accross all PDBs
+# "none" will not apply any Q-score filtering and include all PDBs in the analysis
 q_score_threshold="automatic"
 
 # Would you like to add a penalty to non-overlapping residues in the RMSD calculation?
@@ -116,7 +119,7 @@ fi
 if [ $RMSD -eq 1 ]; then
 
     # Align unique chains
-    python Scripts/RMSD/unique_chain_alignment.py $penalty
+    #python Scripts/RMSD/unique_chain_alignment.py $penalty
 
     # Performing RMSD analysis
     python Scripts/RMSD/RMSD_analysis.py $custom_cut_height

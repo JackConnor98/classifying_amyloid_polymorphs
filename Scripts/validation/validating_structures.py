@@ -6,6 +6,7 @@ import gzip
 import xml.etree.ElementTree as ET
 from plotnine import *
 from scipy.stats import gaussian_kde
+from Bio import PDB
 
 ############################################################################################
 
@@ -17,6 +18,8 @@ if len(sys.argv) > 1:
 
     if user_threshold == "automatic":
         print("Automatic Q-Score selected [Mean-SD]")
+    elif user_threshold == "none":
+        print("No Q-Score threshold will be applied")
     else:
         try: 
             user_threshold = float(sys.argv[1]) 
@@ -50,8 +53,8 @@ else:
 
 # Locate all PDB Q-score data in folder that need to be looped through
 folder_path = os.path.join("Output", "Validation")
-
 data_path = os.path.join(folder_path, "data")
+pdb_path = os.path.join("Output", "PDBs", "unique_chains")
 
 # Get a list of all .csv files in the folder
 xml_files = [
@@ -85,13 +88,95 @@ selected_pdbs_metadata = selected_pdbs_metadata.rename(columns={
 # Selecting columns
 resolution_df = selected_pdbs_metadata[["PDB", "resolution"]]
 
+# Importing PDB info data
+pdb_info = pd.read_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"), sep=",")
+pdb_info = pdb_info[["pdb_id", "PDB", "chain", "fibril"]]
+
 ############################################################################################
+
+# Creating high_resolution_pdb_ids.csv and high_resolution_residues.csv with no Q-score filtering
+if user_threshold == "none":
+    
+    print("\nNo Q-score filtering applied, all PDBs will be included in future analyses. Local PDBs have been added to the list of high resolution PDBs for use in future scripts."
+          )
+    # high_resolution_PDBs = pd.DataFrame({
+    #     "pdb_id": pdb_info["pdb_id"].unique().tolist(),
+    #     "mean_Q_score": 0
+    # })
+        
+    # # Saving a list of high_resolution PDBs
+    # high_resolution_PDBs.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
+
+    # For high_resolution_residues.csv - selecting all residues from all PDBs
+    # Therefore need to read in all residues for each unique chain
+    pdb_data = {"pdb_id": [], "mean_Q_score": []}
+    residue_data = {'pdb_id': [], 'fibril': [], 'resno': []}
+
+    pdbs = [file for file in os.listdir(pdb_path) if file.endswith(".pdb")]
+
+    parser = PDB.PDBParser(QUIET=True)
+
+    for pdb_file in pdbs:
+        path = os.path.join(pdb_path, pdb_file)
+        pdb_name = pdb_file.split(".")[0]
+
+        try:
+            structure = parser.get_structure('protein', path)
+            if not any(structure):
+                print(f"No data found in structure for {pdb_name}")
+                continue
+        except Exception as e:
+            print(f"Error parsing file {pdb_name}: {e}")
+            continue
+
+        for model in structure:
+            for chain in model:
+                for residue in chain:
+                    if PDB.is_aa(residue):
+
+                        if "CA" in residue:
+                            bfactor = residue["CA"].get_bfactor()
+                        else:
+                            continue
+
+                        pdb_data['pdb_id'].append(pdb_name)
+                        pdb_data['mean_Q_score'].append(0)
+
+                        residue_data['pdb_id'].append(pdb_name)
+                        residue_data['fibril'].append(bfactor)
+                        residue_data['resno'].append(residue.id[1])
+    
+
+    # Saving a list of high_resolution PDBs
+    high_resolution_PDBs = pd.DataFrame(pdb_data).drop_duplicates()
+    high_resolution_PDBs.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
+
+
+    high_resolution_residues = pd.DataFrame(residue_data)
+
+    # Putting in ascending residue order
+    high_resolution_residues = high_resolution_residues.sort_values(
+        by=["pdb_id", "fibril", "resno"],
+        ascending=[True, True, True]
+    ).reset_index(drop=True)
+
+    high_resolution_residues.to_csv(
+        os.path.join(folder_path, "high_resolution_residues.csv"),
+        index = False
+    )
+
+
+
+
 
 ##################################################################################
 ### Creating a dataframe containing the Q-scores for every residue of each PDB ###
 ##################################################################################
 
 validation_data = pd.DataFrame()
+
+excluded_file = os.path.join("Output", "excluded_list.txt")
+excluded_list = []
 
 for file in xml_files:
     # Get filename
@@ -138,8 +223,14 @@ for file in xml_files:
         # Append to main dataframe
         validation_data = pd.concat([validation_data, df], ignore_index=True)
     else:
-        print(f"{filename.split('_')[0]} : No Q-scores found")
+        pdb_name = filename.split("_")[0]
+        excluded_list.append(pdb_name)
+        print(f"{pdb_name} : No Q-scores found")
 
+# Save the list of excluded PDBs
+with open(excluded_file, "a") as f:
+    for pdb in excluded_list:
+        f.write(f"{pdb}\tQ-Score data not found\n")
 
 # Selecting key columns 
 q_score_df = validation_data[["pdb", "Q_score", "chain", "resnum", "resname"]]
@@ -180,13 +271,6 @@ q_score_df = pd.merge(chain_mapping_df, q_score_df, on=["PDB", "published_chain"
 q_score_df = q_score_df.rename(columns={"modified_chain": "chain"})
 
 ### Adding in pdb_id ###
-
-# Importing data
-pdb_info = pd.read_csv(os.path.join("Output", "PDBs", "COM_and_fibril.csv"), sep=",")
-
-# Selecting columns of interest
-pdb_info = pdb_info[["pdb_id", "PDB", "chain", "fibril"]]
-
 # Merge pdb_info and q_score_df on 'pdb_id' and 'chain'
 q_score_df = pd.merge(pdb_info, q_score_df, on=["PDB", "chain"])
 
@@ -227,7 +311,11 @@ if isinstance(user_threshold, (int, float)):
 # Case 2: user_threshold is the string "automatic"
 elif isinstance(user_threshold, str) and user_threshold.lower() == "automatic":
     Q_score_threshold = mean_Q_score - sd_Q_score
-# Case 3: anything else
+# Case 3: user_threshold is "none" (no filtering)
+elif isinstance(user_threshold, str) and user_threshold.lower() == "none":
+    Q_score_threshold = -1  # Accept all Q-scores (no filtering)
+    print("No Q-score filtering will be applied")
+# Case 4: anything else
 else:
     print("Error interpreting provided Q-score threshold, defaulting to Mean - SD")
     Q_score_threshold = mean_Q_score - sd_Q_score
@@ -333,272 +421,274 @@ for i in pdb_names:
     p.save(os.path.join(single_pdb_path, f"{i}_Q_score.png"), height=4, width=8, dpi=300)
 
 
-######################################
-### Removing Low Mean Q-score PDBs ###
-######################################
+if user_threshold != "none":
 
-# Selecting PDBs with a mean Q-score > Q_score_threshold
-PDB_q_score["pdb_id"] = PDB_q_score["pdb_id"].astype(str)
-high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_score_threshold].tolist()
-high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
+    ######################################
+    ### Removing Low Mean Q-score PDBs ###
+    ######################################
 
-### Adding in any local PDBs for use in future scripts ###
-if use_local == 1:
-    # Getting a list of local PDB names
-    local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+    # Selecting PDBs with a mean Q-score > Q_score_threshold
+    PDB_q_score["pdb_id"] = PDB_q_score["pdb_id"].astype(str)
+    high_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] > Q_score_threshold].tolist()
+    high_resolutuion_PDBs_df = PDB_q_score[PDB_q_score["mean_Q_score"] >= Q_score_threshold]
 
-    # Getting local pdb_ids by pattern matching unique chains in case any local PDBs have intra-PDB variation
-    # Create a regex pattern to match any of them
-    pattern = "|".join(local_names)  # 'deltaN7|other_local|another'
-    pdb_ids = pdb_info[["pdb_id"]].drop_duplicates()
-    matches = pdb_ids["pdb_id"].str.contains(pattern)
+    ### Adding in any local PDBs for use in future scripts ###
+    if use_local == 1:
+        # Getting a list of local PDB names
+        local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
 
-    # Filter the DataFrame to see which PDB IDs match
-    matched_pdbs = pdb_ids[matches]
+        # Getting local pdb_ids by pattern matching unique chains in case any local PDBs have intra-PDB variation
+        # Create a regex pattern to match any of them
+        pattern = "|".join(local_names)  # 'deltaN7|other_local|another'
+        pdb_ids = pdb_info[["pdb_id"]].drop_duplicates()
+        matches = pdb_ids["pdb_id"].str.contains(pattern)
 
-    # Create a DataFrame for local PDBs with mean_Q_score = "local"
-    local_df = matched_pdbs.copy()
-    local_df["mean_Q_score"] = "local" 
+        # Filter the DataFrame to see which PDB IDs match
+        matched_pdbs = pdb_ids[matches]
 
-    # Append local PDBs
-    high_resolutuion_PDBs_df = pd.concat([high_resolutuion_PDBs_df, local_df], ignore_index=True)
+        # Create a DataFrame for local PDBs with mean_Q_score = "local"
+        local_df = matched_pdbs.copy()
+        local_df["mean_Q_score"] = "local" 
 
-# Saving a list of high_resolution PDBs
-high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
+        # Append local PDBs
+        high_resolutuion_PDBs_df = pd.concat([high_resolutuion_PDBs_df, local_df], ignore_index=True)
 
-#################################################
-### Adding Low Q-score PDBs to exclusion list ###
-#################################################
-low_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] < Q_score_threshold].tolist()
+    # Saving a list of high_resolution PDBs
+    high_resolutuion_PDBs_df.to_csv(os.path.join(folder_path, "high_resolution_pdb_ids.csv"), index=False)
 
-excluded_file = os.path.join("Output", "excluded_list.txt")
-file_exists = os.path.exists(excluded_file) # Check if file exists
+    #################################################
+    ### Adding Low Q-score PDBs to exclusion list ###
+    #################################################
+    low_resolutuion_PDBs = PDB_q_score["pdb_id"][PDB_q_score["mean_Q_score"] < Q_score_threshold].tolist()
 
-# Getting a list of pdbs already added to exclusion list to avoid duplicate entries
-existing_pdbs = set()
-if file_exists:
-    with open(excluded_file, "r") as f:
-        for line in f:
-            if line.strip() and not line.startswith("PDB ID"):
-                existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
+    excluded_file = os.path.join("Output", "excluded_list.txt")
+    file_exists = os.path.exists(excluded_file) # Check if file exists
 
-# Adding missing PDBs with missing Q-scores to excluded list
-if low_resolutuion_PDBs:
-    with open(excluded_file, "a") as f:
-        # Write header only if the file didn't exist before
-        if not file_exists:
-            f.write("PDB ID\tReason\n")
-
-        # Write your excluded entries
-        for pdb in low_resolutuion_PDBs:
-            if pdb not in existing_pdbs:  
-                line = f"{pdb}\tMean Q-Score below threshold\n"
-                f.write(line)
-
-    print(f"\n{len(low_resolutuion_PDBs)} PDBs found below the Q-score threshold")
-else:
-    print("\n🎉 All PDBs are of sufficient resolution. No PDBs removed.")
-
-#####################################
-### Removing Low Q-score Residues ###
-#####################################
-
-# Removing low resolution PDBs from q_score_df
-filtered_df = q_score_df[q_score_df["pdb_id"].isin(high_resolutuion_PDBs)].copy()
-filtered_df = filtered_df[["pdb_id", "chain", "resno", "Q_score"]]
-
-# Recalculating mean and standard deviation with low resolution PDBs removed
-mean_Q_score = np.mean(filtered_df["Q_score"])
-sd_Q_score = np.std(filtered_df["Q_score"])
-Q_score_threshold = mean_Q_score - sd_Q_score
-
-# Selecting good resolution residues
-good_resolution = filtered_df[filtered_df["Q_score"] >= Q_score_threshold]
-
-################################################
-### Visualising Q-score Vairance in Residues ###
-################################################
-
-# Extract Q-scores as a numpy array
-q_scores = filtered_df["Q_score"].values
-
-# Calculate density
-kde = gaussian_kde(q_scores)
-x = np.linspace(q_scores.min(), q_scores.max(), 1000)  # 1000 points across range
-y = kde(x)
-
-# Create a DataFrame from the density data
-density_df = pd.DataFrame({"x": x, "y": y})
-
-# Saving density data
-density_df.to_csv(os.path.join(folder_path, "Q_score_density_data.csv"), index=False)
-
-# Split density_df into two for coloring
-density_below = density_df[density_df["x"] <= Q_score_threshold]
-density_above = density_df[density_df["x"] > Q_score_threshold]
-
-# Plotting a density plot of Q-scores with areas colored based on threshold
-p = (
-    ggplot() +
-    
-    # Area for x <= threshold
-    geom_area(density_below, aes(x="x", y="y"), fill="grey", alpha=0.75, colour="black", size=0.8) +
-    
-    # Area for x > threshold
-    geom_area(density_above, aes(x="x", y="y"), fill="blue", alpha=0.75, colour="black", size=0.8) +
-    
-    # Vertical lines
-    geom_vline(xintercept=mean_Q_score, colour="black", linetype="solid", size=1) +
-    geom_vline(xintercept=Q_score_threshold, colour="red", linetype="dashed", size=1) +
-    
-    # Labels
-    labs(x="Q Score", y="Density") +
-    
-    # X and Y scales
-    scale_x_continuous(breaks = np.linspace(0, 1, num=11), expand=(0, 0, 0, 0)) +
-    scale_y_continuous(expand=(0, 0, 0.1, 0.)) +
-
-    # Theme
-    theme_classic() +
-    theme(
-        panel_border=element_rect(linewidth=1, fill=None),
-        axis_title=element_text(size=18, face="bold", colour="black"),
-        axis_text=element_text(size=14, colour="black")
-    )
-)
-
-# Save plot
-p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
-
-### Stacked Bar Chart ###
-
-# Count occurrences of each resno in good_resolution
-good_resolution_counts = (
-    good_resolution.groupby("resno")
-    .size()
-    .reset_index(name="good_count")
-)
-
-# Count occurrences of each resno in filtered_df
-total_counts = (
-    filtered_df.groupby("resno")
-    .size()
-    .reset_index(name="total_count")
-)
-
-# Merging good and total counts
-count_df = pd.merge(total_counts, good_resolution_counts, on="resno", how="left")
-
-# Fill NaN values in good_count with 0 (in case some residues have no good counts)
-count_df["good_count"] = count_df["good_count"].fillna(0)
-
-print(count_df)
-
-# Calculate % good and bad count
-count_df["percentage"] = count_df["good_count"] / count_df["total_count"] * 100
-count_df["bad_count"] = count_df["total_count"] - count_df["good_count"]
-
-# Transform to long format
-long_count_df = count_df.melt(
-    id_vars=["resno", "percentage"],    
-    value_vars=["good_count", "bad_count"],  
-    var_name="count_type",               
-    value_name="count"                   
-)
-
-# Saving bar chart data
-long_count_df.to_csv(os.path.join(folder_path, "resolution_bar_chart_data.csv"), index=False)
-
-# Plotting stacked bar chart
-p = (
-    ggplot(long_count_df, aes(x="resno", y="count", fill="count_type"))
-    + geom_bar(stat = "identity", alpha=0.75, colour="black")
-    + scale_fill_manual(values={"good_count": "blue", "bad_count": "grey"}, labels={"good_count": "Good", "bad_count": "Poor"})
-    + labs(x="Residue Number", y="Count", fill="Resolution")
-    + scale_x_continuous(breaks=np.arange(0, max_x+1, 5), expand=(0.01, 0, 0.01, 0))
-    + scale_y_continuous(expand=(0, 0, 0.05, 0.))
-    + theme_classic()
-    + theme(
-        panel_border=element_rect(linewidth=1, fill=None),
-        axis_title=element_text(size=18, face="bold", colour="black"),
-        axis_text=element_text(size=14, colour="black"),
-        legend_title=element_text(size=14, face="bold", colour="black"),
-        legend_text=element_text(size=10, colour="black")
-    )
-)
-
-p.save(os.path.join(save_path, "resolution_bar_chart.png"), height=4, width=8, dpi=300)
-
-
-# Important Note:
-# Possible issue with chains having different number of residues
-# A single residue may occur above and below the Q-score threshold in different chains of the same fibril
-# Current solution - if the residue occurs at good resolution at least once in a fibril - it is included
-
-# Adding back in other information
-pdb_info_no_chains = pdb_info[["pdb_id", "PDB", "fibril"]].drop_duplicates()
-tmp = pd.merge(good_resolution, pdb_info_no_chains, on="pdb_id")
-
-# Selecting residues that are present in at least one chain of a fibril at good resolution
-high_resolution_residues = tmp[['pdb_id', 'fibril', 'resno']].drop_duplicates()
-
-# ---------------------------------------------------
-### Adding in local PDBs for use in later scripts ###
-
-if use_local == 1:
-    # Get local PDB IDs that matched
-    local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
-    pattern = "|".join(local_names)
-    local_pdbs = pdb_info_no_chains["pdb_id"][pdb_info_no_chains["pdb_id"].str.contains(pattern)].tolist()
-    matches = pdb_info_no_chains["pdb_id"].str.contains(pattern)
-
-    # Filter the DataFrame to see which PDB IDs match
-    matched_pdbs = pdb_info_no_chains[matches]
-
-    # Folder containing your PDB files
-    unique_chains_folder = os.path.join("Output", "PDBs",  "unique_chains")
-
-    # Initialize a list to collect all rows
-    rows = []
-
-    # Loop over each matched PDB
-    for _, row in matched_pdbs.iterrows():
-        pdb_id = row["pdb_id"]
-        fibril = row["fibril"]
-
-        # Construct the path to the PDB file
-        pdb_file = os.path.join(unique_chains_folder, f"{pdb_id}.pdb")
-        
-        if not os.path.exists(pdb_file):
-            print(f"Warning: {pdb_file} not found, skipping")
-            continue
-
-        # Read the PDB file line by line
-        with open(pdb_file, "r") as f:
+    # Getting a list of pdbs already added to exclusion list to avoid duplicate entries
+    existing_pdbs = set()
+    if file_exists:
+        with open(excluded_file, "r") as f:
             for line in f:
-                # Only consider ATOM records for residues
-                if line.startswith("ATOM") or line.startswith("HETATM"):
-                    # Columns 23-26 (1-based) = residue number
-                    resno = int(line[22:26].strip())
-                    # Add row to list
-                    rows.append({"pdb_id": pdb_id, "fibril": fibril, "resno": resno})
+                if line.strip() and not line.startswith("PDB ID"):
+                    existing_pdbs.add(line.split("\t")[0])  # Get PDB ID before first tab
 
-    # Convert to DataFrame
-    local_residues_df = pd.DataFrame(rows)
+    # Adding missing PDBs with missing Q-scores to excluded list
+    if low_resolutuion_PDBs:
+        with open(excluded_file, "a") as f:
+            # Write header only if the file didn't exist before
+            if not file_exists:
+                f.write("PDB ID\tReason\n")
 
-    # Remove duplicates if multiple chains have the same residue
-    local_residues_df = local_residues_df.drop_duplicates().reset_index(drop=True)
+            # Write your excluded entries
+            for pdb in low_resolutuion_PDBs:
+                if pdb not in existing_pdbs:  
+                    line = f"{pdb}\tMean Q-Score below threshold\n"
+                    f.write(line)
 
-    # merging local_residues_df with high_resolution_df
-    high_resolution_residues = pd.concat([high_resolution_residues, local_residues_df], ignore_index=True)
+        print(f"\n{len(low_resolutuion_PDBs)} PDBs found below the Q-score threshold")
+    else:
+        print("\n🎉 All PDBs are of sufficient resolution. No PDBs removed.")
 
-# ---------------------------------------------------
+    #####################################
+    ### Removing Low Q-score Residues ###
+    #####################################
 
-# Putting in ascending residue order
-high_resolution_residues = high_resolution_residues.sort_values(
-    by=["pdb_id", "fibril", "resno"],
-    ascending=[True, True, True]
-).reset_index(drop=True)
+    # Removing low resolution PDBs from q_score_df
+    filtered_df = q_score_df[q_score_df["pdb_id"].isin(high_resolutuion_PDBs)].copy()
+    filtered_df = filtered_df[["pdb_id", "chain", "resno", "Q_score"]]
 
-# Saving high resolution residues
-high_resolution_residues.to_csv(os.path.join(folder_path, "high_resolution_residues.csv"), index=False)
+    # Recalculating mean and standard deviation with low resolution PDBs removed
+    mean_Q_score = np.mean(filtered_df["Q_score"])
+    sd_Q_score = np.std(filtered_df["Q_score"])
+    Q_score_threshold = mean_Q_score - sd_Q_score
+
+    # Selecting good resolution residues
+    good_resolution = filtered_df[filtered_df["Q_score"] >= Q_score_threshold]
+
+    ################################################
+    ### Visualising Q-score Vairance in Residues ###
+    ################################################
+
+    # Extract Q-scores as a numpy array
+    q_scores = filtered_df["Q_score"].values
+
+    # Calculate density
+    kde = gaussian_kde(q_scores)
+    x = np.linspace(q_scores.min(), q_scores.max(), 1000)  # 1000 points across range
+    y = kde(x)
+
+    # Create a DataFrame from the density data
+    density_df = pd.DataFrame({"x": x, "y": y})
+
+    # Saving density data
+    density_df.to_csv(os.path.join(folder_path, "Q_score_density_data.csv"), index=False)
+
+    # Split density_df into two for coloring
+    density_below = density_df[density_df["x"] <= Q_score_threshold]
+    density_above = density_df[density_df["x"] > Q_score_threshold]
+
+    # Plotting a density plot of Q-scores with areas colored based on threshold
+    p = (
+        ggplot() +
+        
+        # Area for x <= threshold
+        geom_area(density_below, aes(x="x", y="y"), fill="grey", alpha=0.75, colour="black", size=0.8) +
+        
+        # Area for x > threshold
+        geom_area(density_above, aes(x="x", y="y"), fill="blue", alpha=0.75, colour="black", size=0.8) +
+        
+        # Vertical lines
+        geom_vline(xintercept=mean_Q_score, colour="black", linetype="solid", size=1) +
+        geom_vline(xintercept=Q_score_threshold, colour="red", linetype="dashed", size=1) +
+        
+        # Labels
+        labs(x="Q Score", y="Density") +
+        
+        # X and Y scales
+        scale_x_continuous(breaks = np.linspace(0, 1, num=11), expand=(0, 0, 0, 0)) +
+        scale_y_continuous(expand=(0, 0, 0.1, 0.)) +
+
+        # Theme
+        theme_classic() +
+        theme(
+            panel_border=element_rect(linewidth=1, fill=None),
+            axis_title=element_text(size=18, face="bold", colour="black"),
+            axis_text=element_text(size=14, colour="black")
+        )
+    )
+
+    # Save plot
+    p.save(os.path.join(save_path, "Q_score_density.png"), height=4, width=6, dpi=300)
+
+    ### Stacked Bar Chart ###
+
+    # Count occurrences of each resno in good_resolution
+    good_resolution_counts = (
+        good_resolution.groupby("resno")
+        .size()
+        .reset_index(name="good_count")
+    )
+
+    # Count occurrences of each resno in filtered_df
+    total_counts = (
+        filtered_df.groupby("resno")
+        .size()
+        .reset_index(name="total_count")
+    )
+
+    # Merging good and total counts
+    count_df = pd.merge(total_counts, good_resolution_counts, on="resno", how="left")
+
+    # Fill NaN values in good_count with 0 (in case some residues have no good counts)
+    count_df["good_count"] = count_df["good_count"].fillna(0)
+
+    print(count_df)
+
+    # Calculate % good and bad count
+    count_df["percentage"] = count_df["good_count"] / count_df["total_count"] * 100
+    count_df["bad_count"] = count_df["total_count"] - count_df["good_count"]
+
+    # Transform to long format
+    long_count_df = count_df.melt(
+        id_vars=["resno", "percentage"],    
+        value_vars=["good_count", "bad_count"],  
+        var_name="count_type",               
+        value_name="count"                   
+    )
+
+    # Saving bar chart data
+    long_count_df.to_csv(os.path.join(folder_path, "resolution_bar_chart_data.csv"), index=False)
+
+    # Plotting stacked bar chart
+    p = (
+        ggplot(long_count_df, aes(x="resno", y="count", fill="count_type"))
+        + geom_bar(stat = "identity", alpha=0.75, colour="black")
+        + scale_fill_manual(values={"good_count": "blue", "bad_count": "grey"}, labels={"good_count": "Good", "bad_count": "Poor"})
+        + labs(x="Residue Number", y="Count", fill="Resolution")
+        + scale_x_continuous(breaks=np.arange(0, max_x+1, 5), expand=(0.01, 0, 0.01, 0))
+        + scale_y_continuous(expand=(0, 0, 0.05, 0.))
+        + theme_classic()
+        + theme(
+            panel_border=element_rect(linewidth=1, fill=None),
+            axis_title=element_text(size=18, face="bold", colour="black"),
+            axis_text=element_text(size=14, colour="black"),
+            legend_title=element_text(size=14, face="bold", colour="black"),
+            legend_text=element_text(size=10, colour="black")
+        )
+    )
+
+    p.save(os.path.join(save_path, "resolution_bar_chart.png"), height=4, width=8, dpi=300)
+
+
+    # Important Note:
+    # Possible issue with chains having different number of residues
+    # A single residue may occur above and below the Q-score threshold in different chains of the same fibril
+    # Current solution - if the residue occurs at good resolution at least once in a fibril - it is included
+
+    # Adding back in other information
+    pdb_info_no_chains = pdb_info[["pdb_id", "PDB", "fibril"]].drop_duplicates()
+    tmp = pd.merge(good_resolution, pdb_info_no_chains, on="pdb_id")
+
+    # Selecting residues that are present in at least one chain of a fibril at good resolution
+    high_resolution_residues = tmp[['pdb_id', 'fibril', 'resno']].drop_duplicates()
+
+    # ---------------------------------------------------
+    ### Adding in local PDBs for use in later scripts ###
+
+    if use_local == 1:
+        # Get local PDB IDs that matched
+        local_names = [os.path.splitext(f)[0] for f in os.listdir("Local") if f.endswith(".pdb")]
+        pattern = "|".join(local_names)
+        local_pdbs = pdb_info_no_chains["pdb_id"][pdb_info_no_chains["pdb_id"].str.contains(pattern)].tolist()
+        matches = pdb_info_no_chains["pdb_id"].str.contains(pattern)
+
+        # Filter the DataFrame to see which PDB IDs match
+        matched_pdbs = pdb_info_no_chains[matches]
+
+        # Folder containing your PDB files
+        unique_chains_folder = os.path.join("Output", "PDBs",  "unique_chains")
+
+        # Initialize a list to collect all rows
+        rows = []
+
+        # Loop over each matched PDB
+        for _, row in matched_pdbs.iterrows():
+            pdb_id = row["pdb_id"]
+            fibril = row["fibril"]
+
+            # Construct the path to the PDB file
+            pdb_file = os.path.join(unique_chains_folder, f"{pdb_id}.pdb")
+            
+            if not os.path.exists(pdb_file):
+                print(f"Warning: {pdb_file} not found, skipping")
+                continue
+
+            # Read the PDB file line by line
+            with open(pdb_file, "r") as f:
+                for line in f:
+                    # Only consider ATOM records for residues
+                    if line.startswith("ATOM") or line.startswith("HETATM"):
+                        # Columns 23-26 (1-based) = residue number
+                        resno = int(line[22:26].strip())
+                        # Add row to list
+                        rows.append({"pdb_id": pdb_id, "fibril": fibril, "resno": resno})
+
+        # Convert to DataFrame
+        local_residues_df = pd.DataFrame(rows)
+
+        # Remove duplicates if multiple chains have the same residue
+        local_residues_df = local_residues_df.drop_duplicates().reset_index(drop=True)
+
+        # merging local_residues_df with high_resolution_df
+        high_resolution_residues = pd.concat([high_resolution_residues, local_residues_df], ignore_index=True)
+
+    # ---------------------------------------------------
+
+    # Putting in ascending residue order
+    high_resolution_residues = high_resolution_residues.sort_values(
+        by=["pdb_id", "fibril", "resno"],
+        ascending=[True, True, True]
+    ).reset_index(drop=True)
+
+    # Saving high resolution residues
+    high_resolution_residues.to_csv(os.path.join(folder_path, "high_resolution_residues.csv"), index=False)
